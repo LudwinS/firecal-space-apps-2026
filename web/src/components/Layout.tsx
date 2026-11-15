@@ -54,6 +54,7 @@ export function Footer() {
         </a>{" "}
         · {t("Map tiles © OpenStreetMap contributors")} · {t("Team InnovaSoft")} · NASA Space Apps Challenge 2026
       </p>
+      <p className="ai-note">{t("Logo, icons and parts of the code were made with AI assistance (Claude, Gemini).")}</p>
     </footer>
   );
 }

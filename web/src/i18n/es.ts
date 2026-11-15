@@ -134,6 +134,7 @@ export const ES: Record<string, string> = {
   Extreme: "Extremo",
   "No data": "Sin datos",
   "No detections": "Sin detecciones",
+  "Logo, icons and parts of the code were made with AI assistance (Claude, Gemini).": "El logo, los íconos y parte del código se hicieron con asistencia de IA (Claude, Gemini).",
   "No fire was detected here in this month, so there is no activity level to rate.": "No se detectó fuego aquí en este mes, así que no hay nivel de actividad que calificar.",
   "Activity is within the usual range for this month.": "La actividad está dentro del rango habitual para este mes.",
   "Above the typical level for this month. Stay alert.": "Por encima del nivel típico para este mes. Mantente alerta.",
