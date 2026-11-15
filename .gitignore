@@ -12,3 +12,6 @@ data
 coverage.xml
 .coverage
 .scannerwork/
+.vercel
+.env*
+!.env.example
