@@ -57,6 +57,10 @@ describe("i18n", () => {
     const r = buildArea({ ...DEFAULT_AREA, mode: "draw", drawn: null });
     expect(!r.ok && r.error).toBe("Dibuja un rectángulo o un polígono en el mapa.");
     expect(statusMessage(status)).toBe("Diciembre de 2025 (datos hasta el 25 de diciembre): 0.3× lo habitual para diciembre (50 frente a 143 detecciones típicas) — NORMAL");
+    const zero = { ...status, month: "2015-12-01", value: 0, median: 0, message: "December 2015: 0 fire detections; usually none in December — NORMAL" };
+    expect(statusMessage(zero)).toBe("Diciembre de 2015: 0 detecciones de fuego; normalmente no hay en diciembre — SIN DETECCIONES");
+    setLang("en");
+    expect(statusMessage(zero)).toBe("December 2015: 0 fire detections; usually none in December — NO DETECTIONS");
   });
 });
 

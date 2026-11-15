@@ -1,7 +1,7 @@
 import { t } from "../i18n";
 import type { MonthDetailData } from "../lib/monthDetail";
 import { fmtCount, fmtMonthLong, monthLong } from "../lib/format";
-import { levelStyle } from "../lib/levels";
+import { displayLevel } from "../lib/levels";
 import { Icon } from "./icons/Icon";
 
 /** Posición del mes frente al mismo mes de otros años, dicha en el sentido que se entiende mejor. */
@@ -25,7 +25,7 @@ export function MonthDetail({ detail }: { detail: MonthDetailData | null }) {
   const name = monthLong(detail.month);
   const when = fmtMonthLong(detail.iso);
   const title = when.charAt(0).toUpperCase() + when.slice(1);
-  const lv = levelStyle(detail.level);
+  const lv = displayLevel(detail.level, detail.harmonized);
   const hasValue = detail.harmonized !== null;
   const showRange = detail.estimated && detail.lo !== null && detail.hi !== null && (detail.lo !== detail.harmonized || detail.hi !== detail.harmonized);
   let comparison: string;

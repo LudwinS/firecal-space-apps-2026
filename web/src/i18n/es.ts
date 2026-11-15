@@ -133,6 +133,8 @@ export const ES: Record<string, string> = {
   High: "Alto",
   Extreme: "Extremo",
   "No data": "Sin datos",
+  "No detections": "Sin detecciones",
+  "No fire was detected here in this month, so there is no activity level to rate.": "No se detectó fuego aquí en este mes, así que no hay nivel de actividad que calificar.",
   "Activity is within the usual range for this month.": "La actividad está dentro del rango habitual para este mes.",
   "Above the typical level for this month. Stay alert.": "Por encima del nivel típico para este mes. Mantente alerta.",
   "Well above normal for this month. Prepare resources.": "Muy por encima de lo normal para este mes. Prepara recursos.",
@@ -156,8 +158,8 @@ export const ES: Record<string, string> = {
   "Harmonized fire detections per month (VIIRS-equivalent)": "Detecciones de fuego armonizadas por mes (equivalente VIIRS)",
   Year: "Año",
   "{month} {year}: {n} detections": "{month} {year}: {n} detecciones",
-  "Levels compare the latest month with the same month in past years (percentile): Normal < 75th, Elevated ≥ 75th, High ≥ 90th, Extreme ≥ 97.5th. Months with fewer than 5 detections are always Normal. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.":
-    "Los niveles comparan el último mes con el mismo mes de años anteriores (percentil): Normal < 75, Elevado ≥ 75, Alto ≥ 90, Extremo ≥ 97.5. Los meses con menos de 5 detecciones son siempre Normal. Los conteos son puntos de calor vistos por satélite, no incendios individuales; las nubes y el humo pueden ocultar incendios.",
+  "Levels compare the latest month with the same month in past years (percentile): Normal < 75th, Elevated ≥ 75th, High ≥ 90th, Extreme ≥ 97.5th. Months with 1–4 detections are always Normal; months with none show No detections. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.":
+    "Los niveles comparan el último mes con el mismo mes de años anteriores (percentil): Normal < 75, Elevado ≥ 75, Alto ≥ 90, Extremo ≥ 97.5. Los meses con 1 a 4 detecciones son siempre Normal; los meses sin ninguna muestran Sin detecciones. Los conteos son puntos de calor vistos por satélite, no incendios individuales; las nubes y el humo pueden ocultar incendios.",
 
   // ---- leyenda de color
   "Color scale: light means few detections, dark means many, up to {n} per month (square-root scale).":

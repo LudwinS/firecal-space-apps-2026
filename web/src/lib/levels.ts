@@ -77,6 +77,22 @@ export function levelStyle(level: AlertLevel | null | undefined): LevelStyle {
 }
 
 /**
+ * Cero detecciones no es "Normal": no hay actividad que calificar (mar, ciudad, mes sin fuego).
+ * Estilo neutro, fuera de la escala de alerta (ninguna ficha queda activa).
+ */
+export const NO_DETECTIONS: LevelStyle = {
+  ...LEVELS.no_data,
+  label: "No detections",
+  description: "No fire was detected here in this month, so there is no activity level to rate.",
+};
+
+/** Estilo que se muestra para un nivel y su valor: cero detecciones se distingue de "Normal". */
+export function displayLevel(level: AlertLevel | null | undefined, value: number | null | undefined): LevelStyle {
+  if (value === 0) return NO_DETECTIONS;
+  return levelStyle(level);
+}
+
+/**
  * Same thresholds the mock uses (the API decides its own level; this is only a fallback).
  * percentile is 0-100 vs the same calendar month in the reference period.
  */

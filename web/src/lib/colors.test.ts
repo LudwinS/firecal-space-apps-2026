@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ICON_DATA } from "../components/icons/iconData";
 import { ANOMALY_ABOVE, ANOMALY_BELOW, BUCKET_NO_DATA, BUCKET_ZERO, CALENDAR_RAMP, cellColor, colorBucket, EMBER_RAMP, HEATMAP_STEPS, heatmapPieces, contrastRatio, luminance, needsOutline, NO_DATA_COLOR, rampColor, SERIES_A, SERIES_B, sqrtScale, sqrtScaleInverse, textOn, THEME, ZERO_COLOR } from "./colors";
-import { LEVELS, levelFromStats, levelStyle } from "./levels";
+import { LEVELS, NO_DETECTIONS, displayLevel, levelFromStats, levelStyle } from "./levels";
 
 describe("color ramp", () => {
   it("returns the ends of the ramp at 0 and 1 and clamps outside", () => {
@@ -131,5 +131,15 @@ describe("alert levels", () => {
   it("falls back to no_data for unknown levels", () => {
     expect(levelStyle(undefined).level).toBe("no_data");
     expect(levelStyle("weird" as never).level).toBe("no_data");
+  });
+});
+
+describe("displayLevel", () => {
+  it("separa cero detecciones de Normal", () => {
+    expect(displayLevel("normal", 0)).toBe(NO_DETECTIONS);
+    expect(displayLevel("normal", 0).label).toBe("No detections");
+    expect(displayLevel("normal", 3).level).toBe("normal");
+    expect(displayLevel("high", 120).level).toBe("high");
+    expect(displayLevel("no_data", null).level).toBe("no_data");
   });
 });

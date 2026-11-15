@@ -11,7 +11,8 @@ const LEVEL_ES: Record<string, string> = { normal: "NORMAL", elevated: "ELEVADO"
  * rebuilt here from the same numbers (the API message is only parsed for the "data through" note).
  */
 export function statusMessage(s: StatusResponse): string {
-  if (getLang() !== "es") return s.message;
+  // Con cero detecciones la tarjeta dice "No detections"; la etiqueta final del mensaje debe coincidir.
+  if (getLang() !== "es") return s.value === 0 ? s.message.replace(/ — [A-Z ]+$/, " — NO DETECTIONS") : s.message;
   const monthIndex = Number(s.month.split("-")[1] || 1) - 1;
   const mes = monthLong(monthIndex);
   const cuando = fmtMonthLong(s.month);
@@ -20,7 +21,7 @@ export function statusMessage(s: StatusResponse): string {
   const partialMonth = partial ? MONTHS.findIndex((m) => m === partial[1]) : -1;
   const nota = partial && partialMonth >= 0 ? ` (datos hasta el ${partial[2]} de ${monthLong(partialMonth)})` : "";
   const n = nf0.format(s.value);
-  const nivel = LEVEL_ES[s.level] ?? s.level.toUpperCase();
+  const nivel = s.value === 0 ? "SIN DETECCIONES" : (LEVEL_ES[s.level] ?? s.level.toUpperCase());
   if (s.level === "no_data" || s.median === null) {
     return `${cuandoCap}${nota}: ${n} detecciones de fuego; no hay historial suficiente para comparar — ${nivel}`;
   }

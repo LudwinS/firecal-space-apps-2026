@@ -55,7 +55,7 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
         </AsyncBlock>
       </section>
       <p className="note">
-        {t("Levels compare the latest month with the same month in past years (percentile): Normal < 75th, Elevated ≥ 75th, High ≥ 90th, Extreme ≥ 97.5th. Months with fewer than 5 detections are always Normal. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.")}
+        {t("Levels compare the latest month with the same month in past years (percentile): Normal < 75th, Elevated ≥ 75th, High ≥ 90th, Extreme ≥ 97.5th. Months with 1–4 detections are always Normal; months with none show No detections. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.")}
       </p>
     </div>
   );

@@ -3,14 +3,14 @@ import type { CSSProperties } from "react";
 import type { StatusResponse } from "../api/types";
 import { fmtCount, fmtMonthLong, fullMonthName } from "../lib/format";
 import { statusMessage } from "../lib/statusMessage";
-import { LEVEL_ORDER, levelStyle } from "../lib/levels";
+import { LEVEL_ORDER, displayLevel, levelStyle } from "../lib/levels";
 import { Icon } from "./icons/Icon";
 
 /** Big traffic-light card for responders: level is shown with color + icon + text. */
 export function StatusCard({ status, areaName }: { status: StatusResponse; areaName: string }) {
-  const lv = levelStyle(status.level);
-  // Sin detecciones, el mes pico y el año más activo no significan nada.
-  const empty = status.level === "no_data" && !status.value;
+  const lv = displayLevel(status.level, status.value);
+  // Sin detecciones (ni ahora ni lo típico), el mes pico y el año más activo no significan nada.
+  const empty = !status.value && !status.median;
   // Colores del nivel como variables CSS: el resto del estilo vive en styles.css.
   const vars = {
     "--card-bg": lv.card.bg,
@@ -41,7 +41,7 @@ export function StatusCard({ status, areaName }: { status: StatusResponse; areaN
         <ol className="level-scale" aria-label={t("Alert scale")}>
           {LEVEL_ORDER.map((l) => {
             const s = levelStyle(l);
-            const active = l === status.level;
+            const active = l === lv.level;
             return (
               <li
                 key={l}
