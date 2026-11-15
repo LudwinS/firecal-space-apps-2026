@@ -8,8 +8,8 @@ FireCal turns 25 years of NASA FIRMS active-fire hotspots into one consistent bu
 scientists and land managers can see, for any area, which months and years burn the most and whether the
 current month is above or below the historical median — no matter which satellite sensor saw the fires.
 
-- **Live app:** _coming soon_
-- **API docs:** _coming soon_
+- **Live app:** https://firecal-space-apps-2026.vercel.app
+- **API docs:** https://firecal-api.onrender.com/docs (free tier: the first request after idle can take ~1 min while the server wakes up)
 
 ## The problem
 

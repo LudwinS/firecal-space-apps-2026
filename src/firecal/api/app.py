@@ -31,8 +31,11 @@ app = FastAPI(
     description="Harmonized MODIS + VIIRS burning activity calendar (NASA FIRMS). Team InnovaSoft, NASA Space Apps 2026.",
     version="0.1.0",
 )
-app.add_middleware(CORSMiddleware, allow_origins=_origins(), allow_methods=["*"], allow_headers=["*"],
-                   expose_headers=["Content-Disposition"])
+# Además de FIRECAL_CORS_ORIGINS, se aceptan siempre el frontend público en Vercel y sus vistas previas por rama.
+VERCEL_ORIGIN_REGEX = r"https://firecal-space-apps-2026(-[a-z0-9-]+)?\.vercel\.app"
+app.add_middleware(CORSMiddleware, allow_origins=_origins(),
+                   allow_origin_regex=os.environ.get("FIRECAL_CORS_ORIGIN_REGEX", VERCEL_ORIGIN_REGEX),
+                   allow_methods=["*"], allow_headers=["*"], expose_headers=["Content-Disposition"])
 
 
 @app.exception_handler(AreaError)
