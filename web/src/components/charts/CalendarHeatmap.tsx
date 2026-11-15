@@ -1,5 +1,6 @@
 import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
+import type { MonthPick } from "../../lib/monthDetail";
 import type { CalendarResponse } from "../../api/types";
 import { colorBucket, DARK_CELL_OUTLINE, heatmapPieces, needsOutline, THEME } from "../../lib/colors";
 import { fmtCount } from "../../lib/format";
@@ -29,9 +30,13 @@ interface Props {
   max?: number;
   compact?: boolean;
   title?: string;
+  /** Mes resaltado. */
+  selected?: MonthPick | null;
+  /** Si se da, un clic en una celda elige ese mes. */
+  onSelect?: (pick: MonthPick) => void;
 }
 
-export function CalendarHeatmap({ calendar, variable = "harmonized", max, compact = false, title }: Props) {
+export function CalendarHeatmap({ calendar, variable = "harmonized", max, compact = false, title, selected = null, onSelect }: Props) {
   const grid = gridFor(calendar, variable);
   const colorMax = max ?? gridMax(grid);
 
@@ -42,7 +47,9 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
     calendar.years.forEach((year, yi) => {
       grid[yi].forEach((v, m) => {
         const value: [number, number, number, number] = [m, yi, v ?? 0, colorBucket(v, colorMax)];
-        data.push(needsOutline(v, colorMax) ? { value, itemStyle: { borderColor: DARK_CELL_OUTLINE, borderWidth: 1 } } : { value });
+        const isSel = selected !== null && selected.yearIndex === yi && selected.month === m;
+        if (isSel) data.push({ value, itemStyle: { borderColor: THEME.ember, borderWidth: 3 } });
+        else data.push(needsOutline(v, colorMax) ? { value, itemStyle: { borderColor: DARK_CELL_OUTLINE, borderWidth: 1 } } : { value });
         if (v !== null && v > peak.v) peak = { v, y: year, m };
       });
     });
@@ -108,14 +115,29 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
         ? `Calendar heatmap of ${VARIABLE_LABEL[variable].toLowerCase()} fire detections per month, ${calendar.years[0]} to ${calendar.years[calendar.years.length - 1]}. Highest month: ${calendar.months[peak.m]} ${peak.y} with ${fmtCount(peak.v)} detections.`
         : "Calendar heatmap with no data.";
     return { option: opt, summary: s };
-  }, [calendar, grid, colorMax, compact, variable]);
+  }, [calendar, grid, colorMax, compact, variable, selected]);
 
   const rowH = compact ? 13 : 17;
   const height = Math.max(160, calendar.years.length * rowH + 40);
   return (
     <figure className="heatmap">
       {title && <figcaption className="heatmap-title">{title}</figcaption>}
-      <Chart option={option} height={height} label={summary} />
+      <Chart
+        option={option}
+        height={height}
+        label={summary}
+        className={onSelect ? "chart-clickable" : undefined}
+        onEvents={
+          onSelect
+            ? {
+                click: (p) => {
+                  const v = (p as { value?: [number, number] }).value;
+                  if (v) onSelect({ yearIndex: v[1], month: v[0] });
+                },
+              }
+            : undefined
+        }
+      />
       <RampLegend max={colorMax} />
       {variable === "harmonized" && (
         <p className="legend-note years-note">

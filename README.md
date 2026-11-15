@@ -3,7 +3,7 @@
 **NASA Space Apps Challenge 2026 · Challenge: _Harmonization of MODIS and VIIRS Hot Spots_ · Team InnovaSoft**
 (Universidad Gerardo Barrios, San Miguel, El Salvador)
 
-FireCal turns 25 years of NASA FIRMS active-fire hotspots into one consistent burning-activity calendar
+FireCal turns 26 years of NASA FIRMS active-fire hotspots into one consistent burning-activity calendar
 (year × month, Nov 2000 → Oct 2026) for Central America, so that firefighters, emergency responders,
 scientists and land managers can see, for any area, which months and years burn the most and whether the
 current month is above or below the historical median — no matter which satellite sensor saw the fires.

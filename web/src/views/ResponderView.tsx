@@ -1,9 +1,12 @@
+import { useState } from "react";
 import type { FireCalApi, QueryRequest } from "../api/types";
 import { AsyncBlock } from "../components/AsyncBlock";
 import { DownloadButtons } from "../components/DownloadButtons";
 import { MiniCalendar } from "../components/MiniCalendar";
+import { MonthDetail } from "../components/MonthDetail";
 import { StatusCard } from "../components/StatusCard";
 import { useAsync } from "../hooks/useAsync";
+import { latestPick, monthDetail, type MonthPick } from "../lib/monthDetail";
 
 interface Props {
   api: FireCalApi;
@@ -15,6 +18,9 @@ interface Props {
 export function ResponderView({ api, query, queryKey, areaName }: Props) {
   const status = useAsync(queryKey && `status:${queryKey}`, () => api.status(query!));
   const calendar = useAsync(queryKey && `calendar:${queryKey}`, () => api.calendar(query!));
+  const anomalies = useAsync(queryKey && `anomalies:${queryKey}`, () => api.anomalies(query!));
+  // El mes elegido vale solo para el área/periodo en que se eligió; si no, se muestra el último mes con datos.
+  const [picked, setPicked] = useState<{ key: string; pick: MonthPick } | null>(null);
 
   if (!query) {
     return (
@@ -36,7 +42,15 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
       <DownloadButtons api={api} query={query} large />
       <section className="panel">
         <AsyncBlock state={calendar} what="calendar" isEmpty={(c) => c.total_raw_hotspots === 0}>
-          {(c) => <MiniCalendar calendar={c} />}
+          {(c) => {
+            const pick = picked && picked.key === queryKey ? picked.pick : latestPick(c);
+            return (
+              <>
+                <MiniCalendar calendar={c} selected={pick} onSelect={(p) => queryKey && setPicked({ key: queryKey, pick: p })} />
+                <MonthDetail detail={pick ? monthDetail(c, pick, anomalies.data) : null} />
+              </>
+            );
+          }}
         </AsyncBlock>
       </section>
       <p className="note">

@@ -1607,3 +1607,120 @@ input:focus-visible {
     height: 32px;
   }
 }
+
+/* ------------------------------------------------------------ detalle del mes elegido */
+.mini-cal-table td {
+  padding: 0;
+  position: relative;
+}
+
+.cell-btn {
+  display: block;
+  width: 100%;
+  height: 100%;
+  min-height: 24px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  cursor: pointer;
+  padding: 0;
+}
+
+.cell-btn:hover {
+  box-shadow: inset 0 0 0 2px var(--ash);
+}
+
+.cell-btn:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.mini-cal-table td.is-selected {
+  box-shadow: inset 0 0 0 3px var(--ember) !important;
+}
+
+.chart-clickable canvas {
+  cursor: pointer;
+}
+
+.month-detail {
+  margin-top: 16px;
+  background: var(--forest-2);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.month-detail-empty {
+  padding: 12px 18px;
+}
+
+.month-detail-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.month-detail-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.25rem;
+}
+
+.month-detail-value {
+  margin: 0;
+  font-size: 1.05rem;
+}
+
+.month-detail-value .stat-mono {
+  font-family: var(--font-display);
+  font-size: 1.6rem;
+  font-weight: 700;
+  margin-right: 4px;
+}
+
+.month-detail-range {
+  color: var(--ink-2);
+  font-size: 0.9rem;
+}
+
+.month-detail-text {
+  margin: 0;
+  color: var(--ink-soft);
+}
+
+.month-detail .note {
+  margin: 0;
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
+
+.month-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 8px;
+  margin: 4px 0 0;
+}
+
+.month-detail-grid div {
+  background: var(--night);
+  border-radius: var(--radius-sm);
+  padding: 8px 12px;
+}
+
+.month-detail-grid dt {
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.month-detail-grid dd {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 1rem;
+}

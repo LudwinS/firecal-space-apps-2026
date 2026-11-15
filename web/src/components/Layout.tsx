@@ -15,7 +15,7 @@ export function Header({ view, onView, source }: HeaderProps) {
     <header className="app-header">
       <div className="header-inner">
         <div className="brand">
-          <Logo size={40} asHeading tagline="25 years of satellite fire detections on one comparable scale" />
+          <Logo size={40} asHeading tagline="26 years of satellite fire detections on one comparable scale" />
         </div>
         <div className="header-actions">
           <span className={`source-pill source-${source}`}>

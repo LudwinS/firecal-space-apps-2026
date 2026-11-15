@@ -8,9 +8,11 @@ interface Props {
   /** Text alternative for screen readers (the canvas itself is not readable). */
   label: string;
   className?: string;
+  /** Eventos de ECharts, p. ej. { click: fn }. */
+  onEvents?: Record<string, (params: unknown) => void>;
 }
 
-export function Chart({ option, height, label, className }: Props) {
+export function Chart({ option, height, label, className, onEvents }: Props) {
   return (
     <div role="img" aria-label={label} className={className}>
       <ReactEChartsCore
@@ -20,6 +22,7 @@ export function Chart({ option, height, label, className }: Props) {
         lazyUpdate
         style={{ height, width: "100%" }}
         opts={{ renderer: "canvas" }}
+        onEvents={onEvents}
       />
     </div>
   );

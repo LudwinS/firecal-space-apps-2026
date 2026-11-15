@@ -4,10 +4,12 @@ import { AsyncBlock } from "../components/AsyncBlock";
 import { CalendarHeatmap, VARIABLE_LABEL, type CalendarVariable } from "../components/charts/CalendarHeatmap";
 import { AnomalyChart } from "../components/charts/AnomalyChart";
 import { DownloadButtons } from "../components/DownloadButtons";
+import { MonthDetail } from "../components/MonthDetail";
 import { AnomalyIcon, CalendarIcon, DownloadIcon } from "../components/icons/Icon";
 import { Tabs } from "../components/Tabs";
 import { useAsync } from "../hooks/useAsync";
 import { fmtCount } from "../lib/format";
+import { latestPick, monthDetail, type MonthPick } from "../lib/monthDetail";
 import { ComparePanel } from "./ComparePanel";
 import { MethodsPanel } from "./MethodsPanel";
 
@@ -30,6 +32,7 @@ export default function AnalystView({ api, sourceKey, query, queryKey, areaName,
   const [variable, setVariable] = useState<CalendarVariable>("harmonized");
   const calendar = useAsync(tab === "calendar" && queryKey ? `calendar:${queryKey}` : null, () => api.calendar(query!));
   const anomalies = useAsync(tab === "calendar" && queryKey ? `anomalies:${queryKey}` : null, () => api.anomalies(query!));
+  const [picked, setPicked] = useState<{ key: string; pick: MonthPick } | null>(null);
 
   return (
     <Tabs
@@ -51,7 +54,7 @@ export default function AnalystView({ api, sourceKey, query, queryKey, areaName,
                   <h2 className="panel-title">
                     <CalendarIcon size={22} className="title-icon" /> Burning activity calendar · {areaName}
                   </h2>
-                  <p className="help">Each cell is one month. Hover or tap a cell for the harmonized value, its uncertainty range and the raw sensor counts.</p>
+                  <p className="help">Each cell is one month; darker means more fire. Click or tap a month to see how it compares with the usual for that month.</p>
                 </div>
                 <div className="segmented segmented-pill" role="radiogroup" aria-label="Values shown in the calendar">
                   {VARIABLES.map((v) => (
@@ -83,7 +86,20 @@ export default function AnalystView({ api, sourceKey, query, queryKey, areaName,
                     </dl>
                     {variable === "viirs" && <p className="help">VIIRS (375 m) starts in January 2012; earlier years are shown as “no data”.</p>}
                     {variable === "modis" && <p className="help">Raw MODIS (1 km) counts are lower because MODIS misses many small fires that VIIRS sees.</p>}
-                    <CalendarHeatmap calendar={c} variable={variable} />
+                    {(() => {
+                      const pick = picked && picked.key === queryKey ? picked.pick : latestPick(c);
+                      return (
+                        <>
+                          <CalendarHeatmap
+                            calendar={c}
+                            variable={variable}
+                            selected={pick}
+                            onSelect={(p) => queryKey && setPicked({ key: queryKey, pick: p })}
+                          />
+                          <MonthDetail detail={pick ? monthDetail(c, pick, anomalies.data) : null} />
+                        </>
+                      );
+                    })()}
                   </>
                 )}
               </AsyncBlock>
