@@ -118,9 +118,14 @@ Static analysis with SonarQube: see `sonar-project.properties`.
 
 ## Use of AI
 
-AI coding assistants (Claude) were used to speed up implementation, testing, documentation and visual
-design under the team's direction. The solution approach (sensor harmonization with competing models,
-DBSCAN filtering, and the dual responder/analyst interface) was chosen by the team.
+The idea, the solution approach and all product decisions are the team's own: harmonizing MODIS and VIIRS
+with competing models under leave-one-year-out validation, filtering persistent heat sources with DBSCAN,
+and separate views for responders and analysts.
+
+We used Claude (Anthropic) as a coding assistant under the team's direction: it wrote and refactored code for
+the pipeline, API and web app from our specifications, and helped find and fix bugs. The team defined the
+requirements, reviewed and integrated every change, ran the automated tests and tested the app by hand
+(18 functional and 11 usability test cases, including first-time users).
 
 ## Team InnovaSoft
 
