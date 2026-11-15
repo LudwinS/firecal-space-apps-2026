@@ -93,6 +93,13 @@ npm run dev:mock                       # frontend only, with demo data
 Quality checks: `uv run pytest -q`, `uv run ruff check .`, `cd web && npm test && npm run lint && npm run build`.
 Static analysis with SonarQube: see `sonar-project.properties`.
 
+## Deployment
+
+- **Frontend:** Vercel, built from the repo root (`vercel.json` builds `web/`). Every push to `main` deploys
+  to production; other branches get preview URLs. `VITE_API_URL` is set in the Vercel project.
+- **API:** Render free web service from `render.yaml` + `Dockerfile`; the image downloads the processed data
+  from the `data-v1` release. Every push to `main` redeploys it.
+
 ## Data and credits
 
 - **NASA FIRMS** — Fire Information for Resource Management System (MODIS Collection 6.1 and VIIRS S-NPP
