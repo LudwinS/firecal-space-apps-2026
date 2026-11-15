@@ -15,6 +15,7 @@ from firecal.api import data
 from firecal.api.areas import Region, resolve
 
 LEVEL_LABEL = {"normal": "NORMAL", "elevated": "ELEVATED", "high": "HIGH", "extreme": "EXTREME", "no_data": "NO DATA"}
+MIN_ALERT_DETECTIONS = 5.0  # por debajo de esto el nivel es siempre "normal"
 EXPORT_COLUMNS = ["latitude", "longitude", "acq_date", "sensor", "satellite", "country", "frp", "weight"]
 
 
@@ -135,9 +136,10 @@ def _month_start(d: date) -> pd.Timestamp:
 def _window(start: date, end: date | None) -> tuple[date, date, pd.Timestamp, pd.Timestamp]:
     """Rango efectivo: (start, end) en días y (primer, último) mes dentro de la cobertura."""
     st = data.get_store()
-    end_d = end or st.last_date.date()
-    if end_d < start:
+    if end is not None and end < start:
         raise QueryError("end must be on or after start")
+    # Sin `end`, un inicio posterior al último dato no es un error: es un periodo sin datos (m0 > m1).
+    end_d = end or max(st.last_date.date(), start)
     m0 = max(_month_start(start), st.first_month)
     m1 = min(_month_start(end_d), st.last_month)
     return start, end_d, m0, m1
@@ -198,7 +200,9 @@ def _level(value: float, ref: np.ndarray) -> tuple[float | None, float | None, C
     med = float(np.median(ref))
     pct = float((np.sum(ref < value) + 0.5 * np.sum(ref == value)) / ref.size * 100)
     q75, q90, q975 = np.percentile(ref, [75, 90, 97.5])
-    if value <= med or value <= q75:
+    # Con muy pocas detecciones no se declara anomalía: si la referencia es casi todo ceros
+    # (área pequeña, época lluviosa), un solo hotspot superaría cualquier percentil.
+    if value < MIN_ALERT_DETECTIONS or value <= q75:
         lvl = "normal"
     elif value > q975:
         lvl = "extreme"

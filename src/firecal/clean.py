@@ -36,6 +36,8 @@ from firecal.contracts import HOTSPOTS, HOTSPOTS_CLEAN, PERSISTENT_SOURCES
 
 EARTH_RADIUS_KM = 6371.0088
 GRID_DEG = 0.005  # ~550 m: más fino que el píxel MODIS (1 km), más grueso que VIIRS (375 m)
+_KEY_BASE = 1_000_000  # llave de celda = iy * _KEY_BASE + (ix + _IX_OFFSET); |ix| <= 36 000
+_IX_OFFSET = 500_000
 YEAR0 = 2000
 N_YEARS = 32  # años 2000–2031 en la máscara de años
 N_YM_WORDS = (N_YEARS * 12 + 63) // 64  # palabras uint64 para la máscara de meses-año
@@ -71,8 +73,11 @@ def _cell_table(lat: np.ndarray, lon: np.ndarray, dates: pd.Series) -> tuple[np.
     """Agrega hotspots a celdas GRID_DEG. Devuelve (índice de celda por hotspot, tabla de celdas)."""
     iy = np.floor(lat / GRID_DEG).astype(np.int64)
     ix = np.floor(lon / GRID_DEG).astype(np.int64)
-    key = iy * 1_000_000 + ix
+    # ix se desplaza a [0, _KEY_BASE) para que la llave se decodifique bien con longitudes negativas.
+    key = iy * _KEY_BASE + (ix + _IX_OFFSET)
     uniq, inv = np.unique(key, return_inverse=True)
+    cell_iy = uniq // _KEY_BASE
+    cell_ix = uniq - cell_iy * _KEY_BASE - _IX_OFFSET
 
     d = pd.DatetimeIndex(dates)
     yi = np.clip(d.year.to_numpy() - YEAR0, 0, N_YEARS - 1).astype(np.int64)
@@ -87,8 +92,8 @@ def _cell_table(lat: np.ndarray, lon: np.ndarray, dates: pd.Series) -> tuple[np.
     np.bitwise_or.at(ymw, (inv, ym // 64), np.left_shift(np.uint64(1), (ym % 64).astype(np.uint64)))
 
     cells = pd.DataFrame({
-        "lat": ((uniq // 1_000_000) + 0.5) * GRID_DEG,
-        "lon": ((uniq - (uniq // 1_000_000) * 1_000_000) + 0.5) * GRID_DEG,
+        "lat": (cell_iy + 0.5) * GRID_DEG,
+        "lon": (cell_ix + 0.5) * GRID_DEG,
         "n": np.bincount(inv, minlength=len(uniq)),
     })
     cells.attrs["years"], cells.attrs["cal"], cells.attrs["ym"] = years, cal, ymw

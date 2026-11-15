@@ -152,6 +152,9 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
           if (f.geometry.type !== "Point") return null;
           const [x, y] = f.geometry.coordinates as [number, number];
           const p = f.properties ?? {};
+          // La API envía n_hotspots / n_years / first_date / last_date (clean.py); el demo usa name / kind / n_detections.
+          const count = typeof p.n_hotspots === "number" ? p.n_hotspots : p.n_detections;
+          const span = typeof p.first_date === "string" && typeof p.last_date === "string" ? `${p.first_date.slice(0, 4)}–${p.last_date.slice(0, 4)}` : null;
           return (
             <CircleMarker
               key={i}
@@ -163,7 +166,9 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
                 <strong>{String(p.name ?? "Persistent heat source")}</strong>
                 <br />
                 {String(p.kind ?? "static source")} · excluded from counts
-                {typeof p.n_detections === "number" ? ` · ${p.n_detections} detections` : ""}
+                {typeof count === "number" ? ` · ${count.toLocaleString("en-US")} detections` : ""}
+                {typeof p.n_years === "number" ? ` in ${p.n_years} years` : ""}
+                {span ? ` (${span})` : ""}
               </Tooltip>
             </CircleMarker>
           );

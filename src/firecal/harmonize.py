@@ -39,6 +39,7 @@ from firecal.contracts import (
 from firecal.features import assign_cells, ensure_clean_columns
 
 SWITCH_MONTH = pd.Timestamp("2012-02-01")  # desde aquí la serie usa VIIRS directo (ene-2012 está incompleto)
+OVERLAP_END = pd.Timestamp("2026-01-01")  # fin (exclusivo) del traslape usado para validar y entrenar
 VIRTUAL_MIN = 0.05  # aporte mínimo para crear un punto "virtual" en celdas-mes sin MODIS
 DRY_MONTHS = {12, 1, 2, 3, 4, 5}
 
@@ -167,7 +168,8 @@ METHODS = {"k_global": KGlobal, "k_monthly": KMonthly, "k_cell_eb": KCellEB,
 
 # ---------------------------------------------------------------- validación
 def overlap(cm: pd.DataFrame) -> pd.DataFrame:
-    return cm[cm["month"] >= SWITCH_MONTH]
+    # Solo años completos del archivo (2012-2025): el año en curso (NRT, parcial) no entra a validar ni entrenar.
+    return cm[(cm["month"] >= SWITCH_MONTH) & (cm["month"] < OVERLAP_END)]
 
 
 def loyo_predictions(cm: pd.DataFrame, name: str, terra_only: bool = False) -> pd.DataFrame:

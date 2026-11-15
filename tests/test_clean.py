@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from firecal.clean import filter_quality, flag_persistent, persistent_sources_geojson, run
+from firecal.clean import GRID_DEG, _cell_table, filter_quality, flag_persistent, persistent_sources_geojson, run
 from firecal.contracts import CLEAN_EXTRA_COLUMNS, HOTSPOT_COLUMNS
 
 
@@ -36,6 +36,16 @@ def test_filter_quality():
         "type": pd.array([0, 0, 0, 2, 0, pd.NA], dtype="Int64"),
     })
     assert filter_quality(df).tolist() == [False, True, True, False, False, True]
+
+
+def test_cell_table_decodes_negative_and_positive_coordinates():
+    lat = np.array([13.7012, -3.2049, 13.7012])
+    lon = np.array([-89.2031, 28.5018, -89.2031])
+    inv, cells = _cell_table(lat, lon, pd.Series(pd.to_datetime(["2020-01-01"] * 3)))
+    assert len(cells) == 2 and inv[0] == inv[2]
+    # El centro de la celda queda a menos de media celda del punto original
+    assert np.all(np.abs(cells["lat"].to_numpy()[inv] - lat) <= GRID_DEG / 2 + 1e-9)
+    assert np.all(np.abs(cells["lon"].to_numpy()[inv] - lon) <= GRID_DEG / 2 + 1e-9)
 
 
 def test_volcano_persistent_agriculture_not():

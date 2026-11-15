@@ -1,5 +1,5 @@
 # API FireCal (FastAPI) en un contenedor. Pensado para el plan gratuito de Render (512 MB de RAM),
-# pero corre igual en cualquier host Docker. Los datos procesados se bajan del release "data-v1"
+# pero corre igual en cualquier host Docker. Los datos procesados se bajan del release "data-v2"
 # del repositorio de GitHub (data/ no se versiona).
 FROM python:3.12-slim
 
@@ -19,8 +19,8 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --locked --no-dev
 
-# Datos procesados (NASA FIRMS, Centroamérica 2000-11 → 2025-12)
-ARG DATA_URL=https://github.com/LudwinS/firecal-space-apps-2026/releases/download/data-v1
+# Datos procesados (NASA FIRMS, Centroamérica 2000-11 → 2026-10)
+ARG DATA_URL=https://github.com/LudwinS/firecal-space-apps-2026/releases/download/data-v2
 ADD ${DATA_URL}/hotspots_clean.parquet ${DATA_URL}/hotspots_harmonized.parquet \
     ${DATA_URL}/model_metrics.json ${DATA_URL}/persistent_sources.geojson /app/deploy/data/
 

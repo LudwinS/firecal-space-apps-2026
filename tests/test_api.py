@@ -163,6 +163,27 @@ def test_anomalies_and_status(client):
     assert st["peak_month"] == "Mar" and st["most_active_year"] == 2014
 
 
+def test_level_needs_a_minimum_of_detections():
+    import numpy as np
+
+    from firecal.api.queries import _level
+
+    zeros = np.zeros(10)
+    assert _level(1.0, zeros)[2] == "normal"  # un hotspot aislado no es "extreme"
+    assert _level(0.3, zeros)[2] == "normal"
+    assert _level(50.0, zeros)[2] == "extreme"
+
+
+def test_start_after_last_data_is_empty_not_an_error(client):
+    q = {**SV_Q, "start": "2020-01-01"}
+    r = client.post("/api/calendar", json=q)
+    assert r.status_code == 200 and r.json()["years"] == [] and r.json()["total_raw_hotspots"] == 0
+    assert client.post("/api/anomalies", json=q).json()["series"] == []
+    st = client.post("/api/status", json=q)
+    assert st.status_code == 422 and st.json()["detail"] == "No data in the requested period"
+    assert client.post("/api/export/csv", json=q).status_code == 200
+
+
 def test_anomalies_reference_years(client):
     an = client.post("/api/anomalies", json={**SV_Q, "start": "2014-12-01", "reference_years": [2012, 2013]}).json()
     assert an["reference_years"] == [2012, 2013] and an["series"][0]["median"] == 6

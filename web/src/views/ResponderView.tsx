@@ -41,7 +41,7 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
       </section>
       <p className="note">
         Levels compare the latest month with the same month in past years (percentile): Normal &lt; 75th, Elevated ≥ 75th, High ≥ 90th,
-        Extreme ≥ 97.5th. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.
+        Extreme ≥ 97.5th. Months with fewer than 5 detections are always Normal. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.
       </p>
     </div>
   );
