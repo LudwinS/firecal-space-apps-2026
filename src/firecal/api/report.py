@@ -200,7 +200,8 @@ def build_pdf(req: C.QueryRequest) -> bytes:
         "comparable. The harmonized series is expressed in VIIRS-equivalent detections: VIIRS hotspots are used "
         "from 2012 on, and earlier MODIS hotspots are weighted by a model calibrated on the 2012+ overlap "
         "(validated leave-one-year-out). Levels compare each month with the same calendar month in the reference "
-        "years: normal (< p75), elevated (p75-p90), high (p90-p97.5), extreme (> p97.5)."
+        "years: normal (< p75), elevated (p75-p90), high (p90-p97.5), extreme (> p97.5). "
+        f"Months with fewer than {queries.MIN_ALERT_DETECTIONS:g} detections are always normal."
     )
     if cal.method == "provisional":
         note += (" PROVISIONAL: the harmonization model output was not available, so MODIS counts before 2012 "

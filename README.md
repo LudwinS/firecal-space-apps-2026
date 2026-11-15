@@ -54,6 +54,10 @@ uncertainty range derived from the validation errors.
   side-by-side comparison of two areas, and the method & validation table.
 - **Area selection:** country, a polygon or rectangle drawn on the map, or latitude/longitude + radius;
   custom date range and reference period.
+- **Languages:** English and Spanish (EN/ES switch in the header; English by default, `?lang=es` opens it in Spanish).
+  The PDF report is in English.
+- **Map limited to the covered region:** the map cannot leave Central America, everything outside is dimmed, and
+  a point or drawing outside the region is rejected with a clear message.
 - **Accessibility:** color-blind-safe sequential ramp (lightness changes monotonically), every alert level
   shown with color + icon + text, AA contrast verified by tests, keyboard navigation.
 
@@ -62,7 +66,7 @@ uncertainty range derived from the validation errors.
 ```
 NASA FIRMS ─► download/build ─► clean (quality + DBSCAN) ─► features (0.25° × month)
           ─► harmonize (6 methods, leave-one-year-out) ─► parquet/json
-          ─► FastAPI + DuckDB (Render, Docker) ─► React + Vite (Vercel)
+          ─► FastAPI + NumPy (Render, Docker) ─► React + Vite (Vercel)
 ```
 
 - `src/firecal/` — offline pipeline (`download`, `clean`, `features`, `harmonize`) and shared contracts.
@@ -105,7 +109,7 @@ Static analysis with SonarQube: see `sonar-project.properties`.
 - **NASA FIRMS** — Fire Information for Resource Management System (MODIS Collection 6.1 and VIIRS S-NPP
   375 m active fire products): https://firms.modaps.eosdis.nasa.gov
 - Map tiles © OpenStreetMap contributors.
-- Open-source libraries: pandas, DuckDB, scikit-learn, FastAPI, fpdf2, React, Leaflet, Geoman, ECharts.
+- Open-source libraries: pandas, NumPy, PyArrow, scikit-learn, FastAPI, fpdf2, React, Leaflet, Geoman, ECharts.
 
 ## Use of AI
 

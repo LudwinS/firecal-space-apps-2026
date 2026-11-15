@@ -1,4 +1,4 @@
-"""Resolución de AreaSpec: filtro grueso (país o bbox, en DuckDB) + máscara fina (polígono / radio)."""
+"""Resolución de AreaSpec: filtro grueso (país o bbox, vectorizado) + máscara fina (polígono / radio)."""
 
 from __future__ import annotations
 
@@ -15,6 +15,9 @@ from firecal.contracts import AreaSpec
 
 EARTH_RADIUS_KM = 6371.0088
 KM_PER_DEG = 111.32
+# Límites de tamaño de la petición: el servidor gratuito tiene 512 MB y poca CPU.
+MAX_RADIUS_KM = 2000.0
+MAX_POLYGON_VERTICES = 5000
 
 
 class AreaError(ValueError):
@@ -50,14 +53,14 @@ def resolve(area: AreaSpec) -> Region:
 
     if kind == "bbox":
         w, s, e, n = area.bbox
-        if not (w < e and s < n):
+        if not (all(math.isfinite(v) for v in area.bbox) and w < e and s < n):
             raise AreaError("bbox must be [west, south, east, north] with west < east and south < north")
         return Region(key=key, label=f"Box W{w:g} S{s:g} E{e:g} N{n:g}", bbox=(w, s, e, n))
 
     if kind == "point":
         lat, lon, radius = area.point
-        if not (-90 <= lat <= 90 and -180 <= lon <= 180) or radius <= 0:
-            raise AreaError("point must be [lat, lon, radius_km] with radius_km > 0")
+        if not (-90 <= lat <= 90 and -180 <= lon <= 180) or not (0 < radius <= MAX_RADIUS_KM):
+            raise AreaError(f"point must be [lat, lon, radius_km] with 0 < radius_km <= {MAX_RADIUS_KM:g}")
         dlat = radius / KM_PER_DEG
         dlon = radius / (KM_PER_DEG * max(math.cos(math.radians(lat)), 1e-6))
         return Region(
@@ -76,6 +79,8 @@ def resolve(area: AreaSpec) -> Region:
         raise AreaError(f"Invalid GeoJSON polygon: {exc}") from exc
     if geom.geom_type not in ("Polygon", "MultiPolygon") or geom.is_empty:
         raise AreaError("polygon must be a GeoJSON Polygon or MultiPolygon")
+    if shapely.get_num_coordinates(geom) > MAX_POLYGON_VERTICES:
+        raise AreaError(f"polygon has too many vertices (max {MAX_POLYGON_VERTICES}); simplify it first")
     if not geom.is_valid:
         geom = shapely.make_valid(geom)
     shapely.prepare(geom)

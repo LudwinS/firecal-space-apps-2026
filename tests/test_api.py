@@ -163,6 +163,27 @@ def test_anomalies_and_status(client):
     assert st["peak_month"] == "Mar" and st["most_active_year"] == 2014
 
 
+def test_level_needs_a_minimum_of_detections():
+    import numpy as np
+
+    from firecal.api.queries import _level
+
+    zeros = np.zeros(10)
+    assert _level(1.0, zeros)[2] == "normal"  # un hotspot aislado no es "extreme"
+    assert _level(0.3, zeros)[2] == "normal"
+    assert _level(50.0, zeros)[2] == "extreme"
+
+
+def test_start_after_last_data_is_empty_not_an_error(client):
+    q = {**SV_Q, "start": "2020-01-01"}
+    r = client.post("/api/calendar", json=q)
+    assert r.status_code == 200 and r.json()["years"] == [] and r.json()["total_raw_hotspots"] == 0
+    assert client.post("/api/anomalies", json=q).json()["series"] == []
+    st = client.post("/api/status", json=q)
+    assert st.status_code == 422 and st.json()["detail"] == "No data in the requested period"
+    assert client.post("/api/export/csv", json=q).status_code == 200
+
+
 def test_anomalies_reference_years(client):
     an = client.post("/api/anomalies", json={**SV_Q, "start": "2014-12-01", "reference_years": [2012, 2013]}).json()
     assert an["reference_years"] == [2012, 2013] and an["series"][0]["median"] == 6
@@ -214,3 +235,44 @@ def test_harmonized_and_clean_files_are_used(ddir, client):
     assert sum(v for row in cal["harmonized_hi"] for v in row if v is not None) == pytest.approx(
         len(expected_provisional(sv)))
     assert cal["total_raw_hotspots"] == len(sv) - 5
+
+
+def test_far_future_end_does_not_crash(client):
+    for ep in ("calendar", "anomalies", "status", "export/csv", "report/pdf"):
+        assert client.post(f"/api/{ep}", json={**SV_Q, "end": "9999-12-31"}).status_code == 200, ep
+
+
+def test_partial_month_range_only_counts_days_inside(client):
+    # Los puntos caen el día 25: un rango que empieza el 26 no los cuenta, uno que termina el 25 sí.
+    after = client.post("/api/calendar", json={**SV_Q, "start": "2013-03-26", "end": "2013-04-30"}).json()
+    assert after["harmonized"][0][2] == 0 and after["harmonized"][0][3] == 2 * BASE[3]
+    upto = client.post("/api/calendar", json={**SV_Q, "start": "2013-03-01", "end": "2013-03-25"}).json()
+    assert upto["harmonized"][0][2] == 2 * BASE[2]
+
+
+@pytest.mark.parametrize("body", [
+    {"area": {"point": [13.7, -89.2, 5000]}},
+    {"area": {"polygon": {"type": "Polygon", "coordinates": [
+        [[-89.5 + 0.0001 * i, 13.5 + (i % 2) * 0.1] for i in range(6000)] + [[-89.5, 13.5]]]}}},
+    {**SV_Q, "reference_years": [2010, 2001]},
+])
+def test_request_limits(client, body):
+    assert client.post("/api/anomalies", json=body).status_code == 422
+
+
+def test_static_responses_are_cacheable_and_compressed(client):
+    for ep in ("areas", "methods", "persistent-sources"):
+        assert "max-age" in client.get(f"/api/{ep}").headers["cache-control"], ep
+    r = client.post("/api/anomalies", json=SV_Q, headers={"Accept-Encoding": "gzip"})
+    assert r.headers["content-encoding"] == "gzip" and len(r.json()["series"]) > 100
+
+
+def test_warm_up_precomputes_every_country(client):
+    from firecal.api import queries
+
+    queries.warm_up()
+    assert len(queries._monthly_cache) == 2, [k[1:] for k in queries._monthly_cache]
+    # Calendario, anomalías y estado de un país reutilizan esa única tabla.
+    for ep in ("calendar", "anomalies", "status"):
+        assert client.post(f"/api/{ep}", json=SV_Q).status_code == 200
+    assert len(queries._monthly_cache) == 2, [k[1:] for k in queries._monthly_cache]

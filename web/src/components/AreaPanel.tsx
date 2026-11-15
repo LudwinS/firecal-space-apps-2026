@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useId } from "react";
 import {
   CURRENT_YEAR,
@@ -41,17 +42,17 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
   return (
     <section className="panel area-panel" aria-labelledby={`${id}-h`} id="area-panel">
       <h2 id={`${id}-h`} className="panel-title">
-        Area &amp; period
+        {t("Area & period")}
       </h2>
 
       <fieldset className="field">
-        <legend className="label">Where? Choose the area</legend>
-        <div className="mode-grid" role="radiogroup" aria-label="Area selection mode">
+        <legend className="label">{t("Where? Choose the area")}</legend>
+        <div className="mode-grid" role="radiogroup" aria-label={t("Area selection mode")}>
           {MODES.map((m) => (
             <label key={m.id} className={area.mode === m.id ? "mode-btn active" : "mode-btn"}>
               <input type="radio" name={`${id}-mode`} value={m.id} checked={area.mode === m.id} onChange={() => set({ mode: m.id })} />
               <Icon name={m.icon} size={20} />
-              <span>{m.label}</span>
+              <span>{t(m.label)}</span>
             </label>
           ))}
         </div>
@@ -60,13 +61,13 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
       {area.mode === "country" && (
         <div className="field">
           <label className="label" htmlFor={`${id}-country`}>
-            Country
+            {t("Country")}
           </label>
           <select id={`${id}-country`} value={area.country} onChange={(e) => set({ country: e.target.value })} disabled={countriesLoading && countries.length === 0}>
-            {countries.length === 0 && <option value={area.country}>{countriesLoading ? "Loading countries…" : area.country.replace(/_/g, " ")}</option>}
+            {countries.length === 0 && <option value={area.country}>{countriesLoading ? t("Loading countries…") : t(area.country.replace(/_/g, " "))}</option>}
             {countries.map((c) => (
               <option key={c.id} value={c.id}>
-                {c.name}
+                {t(c.name)}
               </option>
             ))}
           </select>
@@ -78,13 +79,13 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
           <p className="help">
             {area.drawn
               ? area.drawn.kind === "bbox"
-                ? `Rectangle: ${area.drawn.bbox.map((v) => v.toFixed(2)).join(", ")} (W, S, E, N).`
-                : `Polygon with ${area.drawn.polygon.type === "Polygon" ? area.drawn.polygon.coordinates[0].length - 1 : "several"} vertices.`
-              : "Pick the rectangle or polygon tool in the map toolbar, then draw. Drawing again replaces the area."}
+                ? t("Rectangle: {box} (W, S, E, N).", { box: area.drawn.bbox.map((v) => v.toFixed(2)).join(", ") })
+                : t("Polygon with {n} vertices.", { n: area.drawn.polygon.type === "Polygon" ? area.drawn.polygon.coordinates[0].length - 1 : t("several") })
+              : t("Pick the rectangle or polygon tool in the map toolbar, then draw. Drawing again replaces the area.")}
           </p>
           {area.drawn && (
             <button type="button" className="btn btn-ghost btn-sm" onClick={() => set({ drawn: null })}>
-              Clear drawing
+              {t("Clear drawing")}
             </button>
           )}
         </div>
@@ -94,19 +95,19 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
         <div className="grid-3">
           <div className="field">
             <label className="label" htmlFor={`${id}-lat`}>
-              Latitude
+              {t("Latitude")}
             </label>
             <input id={`${id}-lat`} inputMode="decimal" value={area.lat} onChange={(e) => set({ lat: e.target.value })} placeholder="13.70" />
           </div>
           <div className="field">
             <label className="label" htmlFor={`${id}-lon`}>
-              Longitude
+              {t("Longitude")}
             </label>
             <input id={`${id}-lon`} inputMode="decimal" value={area.lon} onChange={(e) => set({ lon: e.target.value })} placeholder="-89.20" />
           </div>
           <div className="field">
             <label className="label" htmlFor={`${id}-r`}>
-              Radius (km)
+              {t("Radius (km)")}
             </label>
             <input
               id={`${id}-r`}
@@ -119,14 +120,14 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
               onChange={(e) => set({ radiusKm: e.target.value })}
             />
           </div>
-          <p className="help span-3">Tip: click the map to set the center.</p>
+          <p className="help span-3">{t("Tip: click the map to set the center.")}</p>
         </div>
       )}
 
       <div className="grid-2">
         <div className="field">
           <label className="label" htmlFor={`${id}-y0`}>
-            From year
+            {t("From year")}
           </label>
           <select id={`${id}-y0`} value={time.startYear} onChange={(e) => setT({ startYear: Number(e.target.value) })}>
             {YEARS.map((y) => (
@@ -138,12 +139,12 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
         </div>
         <div className="field">
           <label className="label" htmlFor={`${id}-y1`}>
-            To year
+            {t("To year")}
           </label>
           <select id={`${id}-y1`} value={time.endYear} onChange={(e) => setT({ endYear: Number(e.target.value) })}>
             {YEARS.map((y) => (
               <option key={y} value={y}>
-                {y === CURRENT_YEAR ? `${y} (latest)` : y}
+                {y === CURRENT_YEAR ? t("{y} (latest)", { y }) : y}
               </option>
             ))}
           </select>
@@ -152,20 +153,20 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
 
       <div className="field">
         <label className="label" htmlFor={`${id}-ref`}>
-          Compare against (reference period)
+          {t("Compare against (reference period)")}
         </label>
         <select id={`${id}-ref`} value={time.refPreset} onChange={(e) => setT({ refPreset: e.target.value as RefPreset })}>
-          <option value="all">All years</option>
-          <option value="modis">2001–2011 (MODIS era)</option>
-          <option value="viirs">2012–{LAST_ARCHIVE_YEAR} (VIIRS era)</option>
-          <option value="custom">Custom…</option>
+          <option value="all">{t("All years")}</option>
+          <option value="modis">{t("2001–2011 (MODIS era)")}</option>
+          <option value="viirs">{t("2012–{y} (VIIRS era)", { y: LAST_ARCHIVE_YEAR })}</option>
+          <option value="custom">{t("Custom…")}</option>
         </select>
       </div>
       {time.refPreset === "custom" && (
         <div className="grid-2">
           <div className="field">
             <label className="label" htmlFor={`${id}-r0`}>
-              Reference from
+              {t("Reference from")}
             </label>
             <select id={`${id}-r0`} value={time.refFrom} onChange={(e) => setT({ refFrom: Number(e.target.value) })}>
               {YEARS.map((y) => (
@@ -177,7 +178,7 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
           </div>
           <div className="field">
             <label className="label" htmlFor={`${id}-r1`}>
-              Reference to
+              {t("Reference to")}
             </label>
             <select id={`${id}-r1`} value={time.refTo} onChange={(e) => setT({ refTo: Number(e.target.value) })}>
               {YEARS.map((y) => (
@@ -193,7 +194,7 @@ export function AreaPanel({ area, time, countries, countriesLoading, onArea, onT
       <label className="check">
         <input type="checkbox" checked={showPersistent} onChange={(e) => onShowPersistent(e.target.checked)} />
         <VolcanoIcon size={18} className="check-icon" />
-        <span>Show excluded persistent heat sources (volcanoes, industry)</span>
+        <span>{t("Show excluded persistent heat sources (volcanoes, industry)")}</span>
       </label>
 
       {error && (

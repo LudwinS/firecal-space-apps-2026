@@ -46,10 +46,17 @@ def download_country(country: str, start: int, end: int, force: bool = False) ->
                 print(f"  - {sensor} {year}: no publicado (404)")
                 continue
             r.raise_for_status()
-            out.write_bytes(r.content)
+            # Escritura atómica: una descarga cortada no debe quedar como CSV válido para la próxima corrida.
+            tmp = out.with_name(out.name + ".part")
+            tmp.write_bytes(r.content)
+            tmp.replace(out)
             print(f"  + {sensor} {year}: {len(r.content) / 1024:.0f} KB")
             paths.append(out)
     return paths
+
+
+def _redact(text: str, secret: str) -> str:
+    return text.replace(secret, "***")
 
 
 def fetch_nrt_area(bbox: tuple[float, float, float, float], start: date, end: date) -> pd.DataFrame:
@@ -67,8 +74,12 @@ def fetch_nrt_area(bbox: tuple[float, float, float, float], start: date, end: da
         while d <= end:
             days = min(10, (end - d).days + 1)
             url = AREA_URL.format(key=key, source=source, bbox=bbox_s, days=days, start=d.isoformat())
-            r = requests.get(url, timeout=120)
-            r.raise_for_status()
+            try:
+                r = requests.get(url, timeout=120)
+                r.raise_for_status()
+            except requests.RequestException as exc:
+                # La llave va en la URL y requests la incluye en el mensaje: se redacta y se corta la cadena.
+                raise RuntimeError(f"FIRMS NRT request failed: {_redact(str(exc), key)}") from None
             if r.text.strip() and not r.text.lower().startswith("invalid"):
                 frames.append(pd.read_csv(io.StringIO(r.text)))
             d += timedelta(days=days)

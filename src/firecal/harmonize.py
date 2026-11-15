@@ -208,15 +208,21 @@ def interval_factors(pred: pd.DataFrame, q: tuple[float, float] = (0.1, 0.9)) ->
     return out
 
 
-def compare_methods(cm: pd.DataFrame) -> dict:
+def compare_methods(cm: pd.DataFrame, predictions: dict | None = None) -> dict:
+    """Valida todos los métodos. Si se pasa `predictions`, guarda ahí las predicciones LOYO por
+    (variante, método) para no repetir la validación del ganador al calcular los intervalos."""
     results = {}
     for variant, terra_only in (("full", False), ("terra_only", True)):
         rows = []
         for name in METHODS:
-            m = metrics(loyo_predictions(cm, name, terra_only))
+            pred = loyo_predictions(cm, name, terra_only)
+            if predictions is not None:
+                predictions[(variant, name)] = pred
+            m = metrics(pred)
             rows.append({"method": name, **m})
+            r2 = "   n/a" if m["r2"] is None else f"{m['r2']:.3f}"
             print(f"  [{variant:10}] {name:12} MAE país-mes={m['mae']:8.1f}  sesgo={m['bias_pct']:+6.1f}%  "
-                  f"R²={m['r2']:.3f}  MAE celda={m['mae_cell']:.2f}")
+                  f"R²={r2}  MAE celda={m['mae_cell']:.2f}")
         results[variant] = sorted(rows, key=lambda r: r["mae"])
     return results
 
@@ -277,11 +283,12 @@ def apply_model(cm: pd.DataFrame, points: pd.DataFrame, full_name: str, terra_na
 def run() -> dict:
     cm = pd.read_parquet(CELL_MONTH)
     print("Validación deja-un-año-fuera (traslape 2012-2025):")
-    res = compare_methods(cm)
+    preds: dict = {}
+    res = compare_methods(cm, preds)
     full_best = res["full"][0]["method"]
     terra_best = res["terra_only"][0]["method"]
-    f_full = interval_factors(loyo_predictions(cm, full_best))
-    f_terra = interval_factors(loyo_predictions(cm, terra_best, terra_only=True))
+    f_full = interval_factors(preds[("full", full_best)])
+    f_terra = interval_factors(preds[("terra_only", terra_best)])
 
     src = HOTSPOTS_CLEAN if HOTSPOTS_CLEAN.exists() else HOTSPOTS
     pts = apply_model(cm, pd.read_parquet(src), full_best, terra_best, f_full, f_terra)

@@ -1,12 +1,12 @@
-"""Consultas de la API: agregación mensual por área (DuckDB), calendario, anomalías, estado, comparación y exportación."""
+"""Consultas de la API: agregación mensual por área (numpy vectorizado), calendario, anomalías, estado, comparación y exportación."""
 
 from __future__ import annotations
 
 import threading
+from calendar import monthrange
 from collections import OrderedDict
-from datetime import date, timedelta
+from datetime import date
 
-import duckdb
 import numpy as np
 import pandas as pd
 
@@ -15,6 +15,7 @@ from firecal.api import data
 from firecal.api.areas import Region, resolve
 
 LEVEL_LABEL = {"normal": "NORMAL", "elevated": "ELEVATED", "high": "HIGH", "extreme": "EXTREME", "no_data": "NO DATA"}
+MIN_ALERT_DETECTIONS = 5.0  # por debajo de esto el nivel es siempre "normal"
 EXPORT_COLUMNS = ["latitude", "longitude", "acq_date", "sensor", "satellite", "country", "frp", "weight"]
 
 
@@ -29,102 +30,136 @@ class AreaNotFound(LookupError):
 # ------------------------------------------------------------------ caché por área
 _cache_lock = threading.Lock()
 _monthly_cache: OrderedDict[tuple, pd.DataFrame] = OrderedDict()
+_key_locks: dict[tuple, threading.Lock] = {}
 _CACHE_MAX = 256
 
 
 def clear_cache() -> None:
     with _cache_lock:
         _monthly_cache.clear()
+        _key_locks.clear()
 
 
 # ------------------------------------------------------------------ filtro y agregación
-def _where(region: Region, start: date | None, end: date | None) -> tuple[str, list]:
-    conds, params = [], []
+def _rows(pts: data.Points, region: Region, start: date | None = None, end: date | None = None) -> np.ndarray | None:
+    """Índices de las filas dentro del área y las fechas; None = todas las filas.
+
+    Filtro grueso vectorizado (país / bbox / fechas) y luego máscara fina (polígono / radio)
+    solo sobre las filas que pasaron el grueso.
+    """
+    mask: np.ndarray | None = None
+
+    def also(cond: np.ndarray) -> None:
+        nonlocal mask
+        mask = cond if mask is None else np.logical_and(mask, cond, out=mask)
+
     if region.country is not None:
-        conds.append("country = ?")
-        params.append(region.country)
+        also(pts.country == pts.country_code.get(region.country, -1))
     if region.bbox is not None:
         w, s, e, n = region.bbox
-        conds.append("longitude BETWEEN ? AND ? AND latitude BETWEEN ? AND ?")
-        params += [w, e, s, n]
+        also(pts.lon >= w)
+        also(pts.lon <= e)
+        also(pts.lat >= s)
+        also(pts.lat <= n)
     if start is not None:
-        conds.append("acq_date >= ?")
-        params.append(pd.Timestamp(start).to_pydatetime())
+        also(pts.date >= np.datetime64(start, "D"))
     if end is not None:
-        conds.append("acq_date < ?")
-        params.append(pd.Timestamp(end + timedelta(days=1)).to_pydatetime())
-    return (" WHERE " + " AND ".join(conds)) if conds else "", params
-
-
-def select_points(df: pd.DataFrame, region: Region, cols: list[str],
-                  start: date | None = None, end: date | None = None) -> pd.DataFrame:
-    """Filtro grueso en DuckDB (país/bbox/fechas) y luego máscara fina vectorizada (polígono/radio)."""
-    need = list(dict.fromkeys(cols + (["latitude", "longitude"] if region.mask else [])))
-    where, params = _where(region, start, end)
-    con = duckdb.connect()
-    try:
-        con.register("pts", df)
-        sub = con.execute(f"SELECT {', '.join(need)} FROM pts{where}", params).df()
-    finally:
-        con.close()
-    if region.mask is not None and len(sub):
-        sub = sub.loc[region.mask(sub["latitude"].to_numpy(), sub["longitude"].to_numpy())]
-    return sub[cols].reset_index(drop=True)
-
-
-def _aggregate(df: pd.DataFrame, region: Region, agg_sql: str, cols: list[str],
-               start: date | None, end: date | None) -> pd.DataFrame:
-    """Agrega por mes en DuckDB. Sin máscara fina, filtra y agrega en una sola consulta."""
-    con = duckdb.connect()
-    try:
+        also(pts.date < np.datetime64(end, "D") + np.timedelta64(1, "D"))
+    if mask is None:
         if region.mask is None:
-            con.register("pts", df)
-            where, params = _where(region, start, end)
-        else:
-            con.register("pts", select_points(df, region, cols, start, end))
-            where, params = "", []
-        sql = f"SELECT date_trunc('month', acq_date) AS month, {agg_sql} FROM pts{where} GROUP BY 1"
-        out = con.execute(sql, params).df()
-    finally:
-        con.close()
-    out["month"] = pd.to_datetime(out["month"]).astype("datetime64[us]")
-    return out.set_index("month")
+            return None
+        idx = np.arange(len(pts.lat))
+    else:
+        idx = np.flatnonzero(mask)
+    if region.mask is not None and len(idx):
+        idx = idx[region.mask(pts.lat[idx], pts.lon[idx])]
+    return idx
+
+
+def _take(arr: np.ndarray, idx: np.ndarray | None) -> np.ndarray:
+    return arr if idx is None else arr[idx]
+
+
+def _month_sum(month: np.ndarray, n: int, weights: np.ndarray | None = None) -> np.ndarray:
+    """Suma (o conteo) por mes; ignora los meses fuera de la cobertura [0, n)."""
+    ok = (month >= 0) & (month < n)
+    if not ok.all():
+        month = month[ok]
+        weights = None if weights is None else weights[ok]
+    return np.bincount(month, weights=weights, minlength=n).astype(float)
+
+
+def _month_aligned(start: date | None, end: date | None) -> bool:
+    """True si el rango cubre meses completos (empieza un día 1 y termina a fin de mes)."""
+    return (start is None or start.day == 1) and (end is None or end.day == monthrange(end.year, end.month)[1])
+
+
+def _monthly_table(st: data.Store, region: Region, start: date | None, end: date | None) -> pd.DataFrame:
+    n = len(st.months)
+    hi = _rows(st.harm, region, start, end)
+    hm = _take(st.harm.month, hi)
+    hdf = st.harm.df
+    out = pd.DataFrame({
+        "harmonized": _month_sum(hm, n, _take(hdf["weight"].to_numpy(), hi)),
+        "lo": _month_sum(hm, n, _take(hdf["weight_lo"].to_numpy(), hi)),
+        "hi": _month_sum(hm, n, _take(hdf["weight_hi"].to_numpy(), hi)),
+    }, index=st.months)
+    ri = _rows(st.raw, region, start, end)
+    rm = _take(st.raw.month, ri)
+    sensor = st.raw.df["sensor"].cat
+    codes = _take(sensor.codes.to_numpy(), ri)
+    for name, col in (("MODIS", "raw_modis"), ("VIIRS", "raw_viirs")):
+        lo, hi_m = st.sensor_cover.get(name, (None, None))
+        if lo is None:
+            out[col] = np.nan
+            continue
+        out[col] = _month_sum(rm[codes == list(sensor.categories).index(name)], n)
+        out.loc[(out.index < lo) | (out.index > hi_m), col] = np.nan
+    return out
 
 
 def area_monthly(region: Region, start: date | None = None, end: date | None = None) -> pd.DataFrame:
     """Tabla mensual del área: harmonized, lo, hi, raw_modis, raw_viirs.
 
     Índice: todos los meses de la cobertura global; 0 = sin detecciones, NaN = sensor sin cobertura ese mes.
+    Con un rango de meses completos devuelve la tabla de TODO el periodo (una sola pasada por área, que
+    comparten calendario, anomalías, estado y PDF): el llamador se queda con los meses que le interesan.
     """
     st = data.get_store()
     if region.country is not None and region.country not in set(st.countries["country"]):
         raise AreaNotFound(f"Unknown country '{region.country}'. See GET /api/areas")
+    # Un límite que cae fuera de los datos no filtra nada: se trata como "sin límite".
+    if start is not None and start <= st.first_month.date():
+        start = None
+    if end is not None and end >= st.last_date.date():
+        end = None
+    if _month_aligned(start, end):
+        start = end = None
     ck = (st.key, region.key, start, end)
     with _cache_lock:
         if ck in _monthly_cache:
             _monthly_cache.move_to_end(ck)
             return _monthly_cache[ck]
-
-    harm = _aggregate(st.harm, region,
-                      "sum(weight) AS harmonized, sum(weight_lo) AS lo, sum(weight_hi) AS hi",
-                      ["acq_date", "weight", "weight_lo", "weight_hi"], start, end)
-    raw = _aggregate(st.raw, region,
-                     "count(*) FILTER (WHERE sensor = 'MODIS') AS raw_modis, "
-                     "count(*) FILTER (WHERE sensor = 'VIIRS') AS raw_viirs",
-                     ["acq_date", "sensor"], start, end)
-    idx = pd.date_range(st.first_month, st.last_month, freq="MS").astype("datetime64[us]")
-    out = harm.reindex(idx).fillna(0.0).join(raw.reindex(idx).fillna(0.0).astype(float))
-    for sensor, col in (("MODIS", "raw_modis"), ("VIIRS", "raw_viirs")):
-        lo, hi = st.sensor_cover.get(sensor, (None, None))
-        if lo is None:
-            out[col] = np.nan
-        else:
-            out.loc[(out.index < lo) | (out.index > hi), col] = np.nan
-    with _cache_lock:
-        _monthly_cache[ck] = out
-        while len(_monthly_cache) > _CACHE_MAX:
-            _monthly_cache.popitem(last=False)
+        key_lock = _key_locks.setdefault(ck, threading.Lock())
+    # Un candado por área: si llegan a la vez /status y /calendar de la misma área, se calcula una sola vez.
+    with key_lock:
+        with _cache_lock:
+            if ck in _monthly_cache:
+                return _monthly_cache[ck]
+        out = _monthly_table(st, region, start, end)
+        with _cache_lock:
+            _monthly_cache[ck] = out
+            _key_locks.pop(ck, None)
+            while len(_monthly_cache) > _CACHE_MAX:
+                _monthly_cache.popitem(last=False)
     return out
+
+
+def warm_up() -> None:
+    """Carga los datos y precalcula la tabla mensual de cada país (las consultas más comunes)."""
+    st = data.get_store()
+    for country in st.countries["country"]:
+        area_monthly(resolve(C.AreaSpec(country=country)))
 
 
 # ------------------------------------------------------------------ helpers
@@ -135,9 +170,10 @@ def _month_start(d: date) -> pd.Timestamp:
 def _window(start: date, end: date | None) -> tuple[date, date, pd.Timestamp, pd.Timestamp]:
     """Rango efectivo: (start, end) en días y (primer, último) mes dentro de la cobertura."""
     st = data.get_store()
-    end_d = end or st.last_date.date()
-    if end_d < start:
+    if end is not None and end < start:
         raise QueryError("end must be on or after start")
+    # Sin `end`, un inicio posterior al último dato no es un error: es un periodo sin datos (m0 > m1).
+    end_d = end or max(st.last_date.date(), start)
     m0 = max(_month_start(start), st.first_month)
     m1 = min(_month_start(end_d), st.last_month)
     return start, end_d, m0, m1
@@ -170,19 +206,12 @@ def calendar(req: C.QueryRequest) -> C.CalendarResponse:
                                   raw_modis=[], raw_viirs=[], total_raw_hotspots=0, method=st.method)
     tab = area_monthly(region, start, end)
     years = list(range(m0.year, m1.year + 1))
-    mats: dict[str, list[list]] = {k: [] for k in ("harmonized", "lo", "hi", "raw_modis", "raw_viirs")}
-    for y in years:
-        rows = {k: [] for k in mats}
-        for m in range(1, 13):
-            ts = pd.Timestamp(y, m, 1)
-            inside = m0 <= ts <= m1
-            rec = tab.loc[ts] if inside and ts in tab.index else None
-            for k in ("harmonized", "lo", "hi"):
-                rows[k].append(_num(rec[k]) if rec is not None else None)
-            for k in ("raw_modis", "raw_viirs"):
-                rows[k].append(_int(rec[k]) if rec is not None else None)
-        for k, row in rows.items():
-            mats[k].append(row)
+    base = tab.index[0].year * 12 + tab.index[0].month - 1
+    p0, p1 = m0.year * 12 + m0.month - 1 - base, m1.year * 12 + m1.month - 1 - base
+    mats: dict[str, list[list]] = {}
+    for k, conv in (("harmonized", _num), ("lo", _num), ("hi", _num), ("raw_modis", _int), ("raw_viirs", _int)):
+        col = tab[k].to_numpy()
+        mats[k] = [[conv(col[p]) if p0 <= (p := y * 12 + m - base) <= p1 else None for m in range(12)] for y in years]
     in_range = tab.loc[m0:m1]
     total = int(np.nansum(in_range["raw_modis"].to_numpy()) + np.nansum(in_range["raw_viirs"].to_numpy()))
     return C.CalendarResponse(
@@ -195,10 +224,11 @@ def _level(value: float, ref: np.ndarray) -> tuple[float | None, float | None, C
     """(mediana, percentil, nivel, ratio) de un valor contra los valores de referencia del mismo mes."""
     if ref.size == 0:
         return None, None, "no_data", None
-    med = float(np.median(ref))
+    med, q75, q90, q975 = (float(q) for q in np.percentile(ref, [50, 75, 90, 97.5]))
     pct = float((np.sum(ref < value) + 0.5 * np.sum(ref == value)) / ref.size * 100)
-    q75, q90, q975 = np.percentile(ref, [75, 90, 97.5])
-    if value <= med or value <= q75:
+    # Con muy pocas detecciones no se declara anomalía: si la referencia es casi todo ceros
+    # (área pequeña, época lluviosa), un solo hotspot superaría cualquier percentil.
+    if value < MIN_ALERT_DETECTIONS or value <= q75:
         lvl = "normal"
     elif value > q975:
         lvl = "extreme"
@@ -214,21 +244,25 @@ def _level(value: float, ref: np.ndarray) -> tuple[float | None, float | None, C
 def anomaly_points(region: Region, m0: pd.Timestamp, m1: pd.Timestamp,
                    reference_years: tuple[int, int] | None) -> tuple[list[C.AnomalyPoint], tuple[int, int]]:
     full = area_monthly(region)
-    h = full["harmonized"]
-    years = full.index.year
+    h = full["harmonized"].to_numpy(dtype=float)
+    years = full.index.year.to_numpy()
+    months = full.index.month.to_numpy()
+    if reference_years is not None and reference_years[0] > reference_years[1]:
+        raise QueryError("reference_years must be [first, last] with first <= last")
     ref_range = reference_years or (int(years.min()), int(years.max()))
+    in_ref = (years >= ref_range[0]) & (years <= ref_range[1])
+    base = int(years[0]) * 12 + int(months[0]) - 1
+    p0 = max(m0.year * 12 + m0.month - 1 - base, 0)
+    p1 = min(m1.year * 12 + m1.month - 1 - base, len(h) - 1)
     pts: list[C.AnomalyPoint] = []
-    for ts in pd.date_range(m0, m1, freq="MS"):
-        ts = pd.Timestamp(ts)
-        if ts not in full.index:
-            continue
-        value = float(h.loc[ts])
-        same = full.index.month == ts.month
-        sel = same & (years != ts.year) & (years >= ref_range[0]) & (years <= ref_range[1])
-        ref = h[sel].dropna().to_numpy(dtype=float)
+    for p in range(p0, p1 + 1):
+        value = float(h[p])
+        # Referencia: mismo mes del calendario en los años de referencia, sin contar el propio año.
+        ref = h[(months == months[p]) & in_ref & (years != years[p])]
         med, pct, lvl, ratio = _level(value, ref)
         pts.append(C.AnomalyPoint(
-            month=ts.date(), value=round(value, 2), median=_num(med), anomaly=_num(value - med) if med is not None else None,
+            month=date(int(years[p]), int(months[p]), 1), value=round(value, 2), median=_num(med),
+            anomaly=_num(value - med) if med is not None else None,
             ratio=_num(ratio, 3), percentile=_num(pct, 1), level=lvl,
         ))
     return pts, ref_range
@@ -310,7 +344,7 @@ def compare(req: C.CompareRequest) -> C.CompareResponse:
 
 
 def export_chunks(req: C.QueryRequest):
-    """Igual que export_points pero en trozos de un año, para no armar el CSV completo en memoria.
+    """CSV de los puntos del área en trozos de un año, para no armar el archivo completo en memoria.
 
     Valida todo ANTES de devolver el generador, así los errores siguen siendo 404/422 y no un stream roto.
     """
@@ -319,34 +353,28 @@ def export_chunks(req: C.QueryRequest):
     st = data.get_store()
     if region.country is not None and region.country not in set(st.countries["country"]):
         raise AreaNotFound(f"Unknown country '{region.country}'. See GET /api/areas")
-    cols = [c for c in EXPORT_COLUMNS if c in st.harm.columns]
+    harm = st.harm
+    cols = [c for c in EXPORT_COLUMNS if c in harm.df.columns]
 
     def gen():
         yield ",".join(cols) + "\n"
-        for year in range(start.year, end.year + 1):
-            y0 = max(start, date(year, 1, 1))
-            y1 = min(end, date(year, 12, 31))
-            df = select_points(st.harm, region, cols, y0, y1).sort_values("acq_date", kind="stable")
-            if "satellite" in df:
-                df = df[df["satellite"] != "virtual"]
-            if len(df):
-                df["acq_date"] = pd.to_datetime(df["acq_date"]).dt.strftime("%Y-%m-%d")
+        idx = _rows(harm, region, start, end)
+        if idx is None:
+            idx = np.arange(len(harm.df))
+        # Los puntos "virtual" son aporte estimado del modelo en celdas-mes sin MODIS: no son detecciones reales.
+        if "satellite" in harm.df:
+            sat = harm.df["satellite"].cat
+            if "virtual" in sat.categories:
+                idx = idx[sat.codes.to_numpy()[idx] != list(sat.categories).index("virtual")]
+        dates = harm.date[idx]
+        order = np.argsort(dates, kind="stable")
+        idx, dates = idx[order], dates[order]
+        years = dates.astype("datetime64[Y]")
+        cuts = np.flatnonzero(years[1:] != years[:-1]) + 1
+        for part in np.split(idx, cuts):
+            if len(part):
+                df = harm.df.take(part)[cols]
+                df["acq_date"] = df["acq_date"].dt.strftime("%Y-%m-%d")
                 yield df.to_csv(index=False, header=False)
 
     return gen()
-
-
-def export_points(req: C.QueryRequest) -> pd.DataFrame:
-    region = resolve(req.area)
-    start, end, _, _ = _window(req.start, req.end)
-    st = data.get_store()
-    if region.country is not None and region.country not in set(st.countries["country"]):
-        raise AreaNotFound(f"Unknown country '{region.country}'. See GET /api/areas")
-    cols = [c for c in EXPORT_COLUMNS if c in st.harm.columns]
-    df = select_points(st.harm, region, cols, start, end).sort_values("acq_date", kind="stable")
-    # Los puntos "virtual" son aporte estimado del modelo en celdas-mes sin MODIS: no son detecciones reales.
-    if "satellite" in df:
-        df = df[df["satellite"] != "virtual"]
-    df["acq_date"] = pd.to_datetime(df["acq_date"]).dt.strftime("%Y-%m-%d")
-    return df.reset_index(drop=True)
-

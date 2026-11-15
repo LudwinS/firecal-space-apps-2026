@@ -3,14 +3,17 @@ import "@geoman-io/leaflet-geoman-free/dist/leaflet-geoman.css";
 import L from "./leafletGlobal";
 import "@geoman-io/leaflet-geoman-free";
 import { useEffect, useMemo } from "react";
-import { Circle, CircleMarker, GeoJSON, MapContainer, Rectangle, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
-import type { AreaState, DrawnShape } from "../../api/requests";
+import { Circle, CircleMarker, GeoJSON, MapContainer, Polygon, Rectangle, TileLayer, Tooltip, useMap, useMapEvents } from "react-leaflet";
+import type { AreaState, Bbox, DrawnShape } from "../../api/requests";
+import { t } from "../../i18n";
 import { normalizeBbox } from "../../api/requests";
 import type { AreaInfo, PersistentSourcesGeoJSON } from "../../api/types";
 
 interface Props {
   area: AreaState;
   countries: AreaInfo[];
+  /** Region that has data, [west, south, east, north]: the map cannot leave it. */
+  coverage: Bbox | null;
   onDraw: (shape: DrawnShape) => void;
   onPickPoint: (lat: number, lon: number) => void;
   persistent: PersistentSourcesGeoJSON | null;
@@ -28,6 +31,40 @@ function FitTo({ bounds }: { bounds: L.LatLngBoundsExpression | null }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key, map]);
   return null;
+}
+
+// Todo lo que queda fuera de la región con datos se oscurece.
+const OUTSIDE_STYLE = { stroke: false, fillColor: "#0E1714", fillOpacity: 0.6 };
+const WORLD_RING: [number, number][] = [
+  [-89, -360],
+  [89, -360],
+  [89, 360],
+  [-89, 360],
+];
+
+/** Keeps the map inside the region that has data and dims everything else. */
+function Coverage({ box }: { box: Bbox | null }) {
+  const map = useMap();
+  const key = box ? box.join(",") : "";
+  useEffect(() => {
+    if (!box) return;
+    const bounds = L.latLngBounds([box[1], box[0]], [box[3], box[2]]);
+    map.setMaxBounds(bounds.pad(0.2));
+    // No se puede alejar más de lo necesario para ver toda la región.
+    map.setMinZoom(Math.max(0, Math.floor(map.getBoundsZoom(bounds))));
+    // `key` captura el contenido de box.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key, map]);
+  if (!box) return null;
+  const [w, s, e, n] = box;
+  const hole: [number, number][] = [
+    [s, w],
+    [n, w],
+    [n, e],
+    [s, e],
+  ];
+  // pmIgnore: Geoman no debe tratar la máscara como una forma dibujada.
+  return <Polygon positions={[WORLD_RING, hole]} pathOptions={OUTSIDE_STYLE} interactive={false} {...({ pmIgnore: true } as object)} />;
 }
 
 /** Geoman toolbar (rectangle + polygon) shown only in "draw" mode. */
@@ -55,7 +92,7 @@ function DrawControls({ onDraw }: { onDraw: (s: DrawnShape) => void }) {
       .getContainer()
       .querySelectorAll<HTMLAnchorElement>(".leaflet-pm-toolbar a.leaflet-buttons-control-button")
       .forEach((a) => {
-        const title = a.getAttribute("title") || a.parentElement?.getAttribute("title") || "Draw";
+        const title = a.getAttribute("title") || a.parentElement?.getAttribute("title") || t("Draw");
         a.setAttribute("role", "button");
         a.setAttribute("aria-label", title);
         a.setAttribute("tabindex", "0");
@@ -100,7 +137,7 @@ function bboxToBounds(b: [number, number, number, number]): L.LatLngBoundsExpres
   ];
 }
 
-export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Props) {
+export function AreaMap({ area, countries, coverage, onDraw, onPickPoint, persistent }: Props) {
   const country = countries.find((c) => c.id === area.country);
   const lat = Number(area.lat);
   const lon = Number(area.lon);
@@ -119,9 +156,9 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
 
   const hint =
     area.mode === "draw"
-      ? "Use the rectangle or polygon tool (top left) to draw your area."
+      ? t("Use the rectangle or polygon tool (top left) to draw your area.")
       : area.mode === "point"
-        ? "Click the map to set the center point."
+        ? t("Click the map to set the center point.")
         : null;
 
   return (
@@ -130,15 +167,17 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
         center={[13.8, -88.9]}
         zoom={7}
         scrollWheelZoom
+        maxBoundsViscosity={1}
         className="map"
         attributionControl
-        aria-label="Map of the area of interest"
+        aria-label={t("Map of the area of interest")}
       >
         <TileLayer
           attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
           url="https://tile.openstreetmap.org/{z}/{x}/{y}.png"
           maxZoom={18}
         />
+        <Coverage box={coverage} />
         <FitTo bounds={fit} />
         {area.mode === "country" && country && <Rectangle bounds={bboxToBounds(country.bbox)} pathOptions={AREA_STYLE} />}
         {area.mode === "draw" && area.drawn?.kind === "bbox" && <Rectangle bounds={bboxToBounds(area.drawn.bbox)} pathOptions={AREA_STYLE} />}
@@ -152,6 +191,9 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
           if (f.geometry.type !== "Point") return null;
           const [x, y] = f.geometry.coordinates as [number, number];
           const p = f.properties ?? {};
+          // La API envía n_hotspots / n_years / first_date / last_date (clean.py); el demo usa name / kind / n_detections.
+          const count = typeof p.n_hotspots === "number" ? p.n_hotspots : p.n_detections;
+          const span = typeof p.first_date === "string" && typeof p.last_date === "string" ? `${p.first_date.slice(0, 4)}–${p.last_date.slice(0, 4)}` : null;
           return (
             <CircleMarker
               key={i}
@@ -160,10 +202,12 @@ export function AreaMap({ area, countries, onDraw, onPickPoint, persistent }: Pr
               pathOptions={{ color: "#0E1714", weight: 2, fillColor: "#F2D9A6", fillOpacity: 0.95, dashArray: "3 2" }}
             >
               <Tooltip className="map-tooltip">
-                <strong>{String(p.name ?? "Persistent heat source")}</strong>
+                <strong>{t(String(p.name ?? "Persistent heat source"))}</strong>
                 <br />
-                {String(p.kind ?? "static source")} · excluded from counts
-                {typeof p.n_detections === "number" ? ` · ${p.n_detections} detections` : ""}
+                {t(String(p.kind ?? "static source"))} · {t("excluded from counts")}
+                {typeof count === "number" ? ` · ${t("{n} detections", { n: count.toLocaleString("en-US") })}` : ""}
+                {typeof p.n_years === "number" ? ` ${t("in {n} years", { n: p.n_years })}` : ""}
+                {span ? ` (${span})` : ""}
               </Tooltip>
             </CircleMarker>
           );

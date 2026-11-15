@@ -1,6 +1,8 @@
+import { t } from "../i18n";
 import type { CSSProperties } from "react";
 import type { StatusResponse } from "../api/types";
 import { fmtCount, fmtMonthLong, fullMonthName } from "../lib/format";
+import { statusMessage } from "../lib/statusMessage";
 import { LEVEL_ORDER, levelStyle } from "../lib/levels";
 import { Icon } from "./icons/Icon";
 
@@ -30,13 +32,13 @@ export function StatusCard({ status, areaName }: { status: StatusResponse; areaN
             {areaName} · {fmtMonthLong(status.month)}
           </p>
           <h2 id="status-heading" className="status-level">
-            {lv.label}
-            <span className="sr-only"> burning activity level</span>
+            {t(lv.label)}
+            <span className="sr-only"> {t("burning activity level")}</span>
           </h2>
-          <p className="status-message">{status.message}</p>
-          <p className="status-desc">{lv.description}</p>
+          <p className="status-message">{statusMessage(status)}</p>
+          <p className="status-desc">{t(lv.description)}</p>
         </div>
-        <ol className="level-scale" aria-label="Alert scale">
+        <ol className="level-scale" aria-label={t("Alert scale")}>
           {LEVEL_ORDER.map((l) => {
             const s = levelStyle(l);
             const active = l === status.level;
@@ -47,7 +49,7 @@ export function StatusCard({ status, areaName }: { status: StatusResponse; areaN
                 aria-current={active ? "true" : undefined}
                 style={active ? { background: s.bg, color: s.fg, borderColor: s.bg } : undefined}
               >
-                <Icon name={s.icon} size={14} strokeWidth={2} /> {s.label}
+                <Icon name={s.icon} size={14} strokeWidth={2} /> {t(s.label)}
               </li>
             );
           })}
@@ -55,24 +57,24 @@ export function StatusCard({ status, areaName }: { status: StatusResponse; areaN
       </section>
       <dl className="stat-tiles">
         <div className="stat-tile">
-          <dt>Detections this month</dt>
+          <dt>{t("Detections this month")}</dt>
           <dd>
             <span className="stat-value stat-mono">{fmtCount(status.value)}</span>
-            <span className="stat-note">Typical: {fmtCount(status.median)}</span>
+            <span className="stat-note">{t("Typical: {n}", { n: fmtCount(status.median) })}</span>
           </dd>
         </div>
         <div className="stat-tile">
-          <dt>Peak month of the year</dt>
+          <dt>{t("Peak month of the year")}</dt>
           <dd>
             <span className="stat-value">{empty ? "—" : fullMonthName(status.peak_month)}</span>
-            <span className="stat-note">Highest median month</span>
+            <span className="stat-note">{t("Highest median month")}</span>
           </dd>
         </div>
         <div className="stat-tile">
-          <dt>Most active year</dt>
+          <dt>{t("Most active year")}</dt>
           <dd>
             <span className="stat-value">{empty ? "—" : status.most_active_year}</span>
-            <span className="stat-note">Harmonized, selected period</span>
+            <span className="stat-note">{t("Harmonized, selected period")}</span>
           </dd>
         </div>
       </dl>

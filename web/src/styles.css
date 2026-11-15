@@ -241,6 +241,13 @@ a:hover {
   font-weight: 600;
 }
 
+/* selector de idioma: mismas píldoras, más compactas */
+.lang-toggle button {
+  padding: 0 12px;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+
 /* ------------------------------------------------------------ banner */
 .banner {
   max-width: 1312px;

@@ -2,6 +2,7 @@ import type { EChartsOption } from "echarts";
 import { useMemo } from "react";
 import type { AnomalyResponse } from "../../api/types";
 import { ANOMALY_ABOVE, ANOMALY_BELOW } from "../../lib/colors";
+import { t, useLang } from "../../i18n";
 import { fmtCount, fmtMonthShort, fmtPct } from "../../lib/format";
 import { levelStyle } from "../../lib/levels";
 import { Chart } from "./Chart";
@@ -10,6 +11,7 @@ import { AXIS_LINE, AXIS_TEXT, FONT, GRID_LINE, TOOLTIP_STYLE } from "./echarts"
 
 /** Diverging bars: detections above (red) or below (blue) the median of the same month. */
 export function AnomalyChart({ data }: { data: AnomalyResponse }) {
+  const lang = useLang();
   const { option, label } = useMemo(() => {
     const pts = data.series;
     const cats = pts.map((p) => fmtMonthShort(p.month));
@@ -19,7 +21,12 @@ export function AnomalyChart({ data }: { data: AnomalyResponse }) {
     }));
     const startPct = pts.length > 120 ? 100 - (120 / pts.length) * 100 : 0;
     const above = pts.filter((p) => (p.anomaly ?? 0) > 0).length;
-    const lbl = `Bar chart of monthly anomalies versus the median of the same month in ${data.reference_years[0]}–${data.reference_years[1]}. ${above} of ${pts.length} months were above the median.`;
+    const lbl = t("Bar chart of monthly anomalies versus the median of the same month in {from}–{to}. {above} of {total} months were above the median.", {
+      from: data.reference_years[0],
+      to: data.reference_years[1],
+      above,
+      total: pts.length,
+    });
 
     const opt: EChartsOption = {
       animation: false,
@@ -35,12 +42,12 @@ export function AnomalyChart({ data }: { data: AnomalyResponse }) {
           const lv = levelStyle(p.level);
           return [
             `<strong>${fmtMonthShort(p.month)}</strong>`,
-            `Detections: <strong>${fmtCount(p.value)}</strong>`,
-            `Median (same month): ${fmtCount(p.median)}`,
-            `Difference: ${p.anomaly === null ? "—" : (p.anomaly > 0 ? "+" : "") + fmtCount(p.anomaly)}`,
-            `Ratio: ${p.ratio === null ? "—" : p.ratio.toFixed(2) + "×"}`,
-            `Percentile: ${fmtPct(p.percentile)}`,
-            `Level: ${iconSvg(lv.icon, 14, lv.accent)} ${lv.label}`,
+            `${t("Detections")}: <strong>${fmtCount(p.value)}</strong>`,
+            `${t("Median (same month)")}: ${fmtCount(p.median)}`,
+            `${t("Difference")}: ${p.anomaly === null ? "—" : (p.anomaly > 0 ? "+" : "") + fmtCount(p.anomaly)}`,
+            `${t("Ratio")}: ${p.ratio === null ? "—" : p.ratio.toFixed(2) + "×"}`,
+            `${t("Percentile")}: ${fmtPct(p.percentile)}`,
+            `${t("Level")}: ${iconSvg(lv.icon, 14, lv.accent)} ${t(lv.label)}`,
           ].join("<br/>");
         }) as never,
       },
@@ -53,7 +60,7 @@ export function AnomalyChart({ data }: { data: AnomalyResponse }) {
       },
       yAxis: {
         type: "value",
-        name: "vs median",
+        name: t("vs median"),
         nameTextStyle: { color: AXIS_TEXT },
         axisLabel: { color: AXIS_TEXT },
         splitLine: { lineStyle: { color: GRID_LINE } },
@@ -88,15 +95,18 @@ export function AnomalyChart({ data }: { data: AnomalyResponse }) {
       ],
     };
     return { option: opt, label: lbl };
-  }, [data]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [data, lang]);
 
   return (
     <figure className="chart-figure">
       <Chart option={option} height={300} label={label} />
       <figcaption className="chart-legend">
-        <span className="dot" style={{ background: ANOMALY_ABOVE }} aria-hidden="true" /> Above median
-        <span className="dot" style={{ background: ANOMALY_BELOW }} aria-hidden="true" /> Below median
-        <span className="muted">· Reference: {data.reference_years[0]}–{data.reference_years[1]} · drag the slider to change the window</span>
+        <span className="dot" style={{ background: ANOMALY_ABOVE }} aria-hidden="true" /> {t("Above median")}
+        <span className="dot" style={{ background: ANOMALY_BELOW }} aria-hidden="true" /> {t("Below median")}
+        <span className="muted">
+          · {t("Reference: {from}–{to} · drag the slider to change the window", { from: data.reference_years[0], to: data.reference_years[1] })}
+        </span>
       </figcaption>
     </figure>
   );

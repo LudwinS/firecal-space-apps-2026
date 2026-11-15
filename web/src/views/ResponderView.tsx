@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import type { FireCalApi, QueryRequest } from "../api/types";
 import { AsyncBlock } from "../components/AsyncBlock";
 import { DownloadButtons } from "../components/DownloadButtons";
@@ -19,8 +20,8 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
   if (!query) {
     return (
       <div className="state state-empty">
-        <p className="state-title">Choose an area to see its fire status</p>
-        <p className="state-text">Pick a country, draw on the map, or enter a latitude and longitude.</p>
+        <p className="state-title">{t("Choose an area to see its fire status")}</p>
+        <p className="state-text">{t("Pick a country, draw on the map, or enter a latitude and longitude.")}</p>
       </div>
     );
   }
@@ -28,7 +29,7 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
   return (
     <div className="responder">
       <a className="skip-inline" href="#area-panel">
-        Change area or period
+        {t("Change area or period")}
       </a>
       <AsyncBlock state={status} what="current fire status" minHeight={280}>
         {(s) => <StatusCard status={s} areaName={areaName} />}
@@ -40,8 +41,7 @@ export function ResponderView({ api, query, queryKey, areaName }: Props) {
         </AsyncBlock>
       </section>
       <p className="note">
-        Levels compare the latest month with the same month in past years (percentile): Normal &lt; 75th, Elevated ≥ 75th, High ≥ 90th,
-        Extreme ≥ 97.5th. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.
+        {t("Levels compare the latest month with the same month in past years (percentile): Normal < 75th, Elevated ≥ 75th, High ≥ 90th, Extreme ≥ 97.5th. Months with fewer than 5 detections are always Normal. Counts are satellite hotspots, not individual fires; clouds and smoke can hide fires.")}
       </p>
     </div>
   );

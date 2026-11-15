@@ -1,3 +1,4 @@
+import { LANGS, setLang, t, useLang } from "../i18n";
 import type { DataSource } from "../api/client";
 import { SatelliteIcon, WakingIcon } from "./icons/Icon";
 import { Logo } from "./Logo";
@@ -11,22 +12,30 @@ interface HeaderProps {
 }
 
 export function Header({ view, onView, source }: HeaderProps) {
+  const lang = useLang();
   return (
     <header className="app-header">
       <div className="header-inner">
         <div className="brand">
-          <Logo size={40} asHeading tagline="25 years of satellite fire detections on one comparable scale" />
+          <Logo size={40} asHeading tagline={t("25 years of satellite fire detections on one comparable scale")} />
         </div>
         <div className="header-actions">
           <span className={`source-pill source-${source}`}>
-            {source === "live" ? "Live data" : source === "mock" ? "Demo data" : "Connecting…"}
+            {source === "live" ? t("Live data") : source === "mock" ? t("Demo data") : t("Connecting…")}
           </span>
-          <div className="view-toggle" role="group" aria-label="Choose view">
+          <div className="view-toggle lang-toggle" role="group" aria-label={t("Language")}>
+            {LANGS.map((l) => (
+              <button key={l.id} type="button" lang={l.id} title={l.name} aria-label={l.name} aria-pressed={lang === l.id} className={lang === l.id ? "active" : ""} onClick={() => setLang(l.id)}>
+                {l.label}
+              </button>
+            ))}
+          </div>
+          <div className="view-toggle" role="group" aria-label={t("Choose view")}>
             <button type="button" aria-pressed={view === "responder"} className={view === "responder" ? "active" : ""} onClick={() => onView("responder")}>
-              Responder<span className="sr-only"> view</span>
+              {t("Responder")}<span className="sr-only"> {t("view")}</span>
             </button>
             <button type="button" aria-pressed={view === "analyst"} className={view === "analyst" ? "active" : ""} onClick={() => onView("analyst")}>
-              Analyst<span className="sr-only"> view</span>
+              {t("Analyst")}<span className="sr-only"> {t("view")}</span>
             </button>
           </div>
         </div>
@@ -39,11 +48,11 @@ export function Footer() {
   return (
     <footer className="app-footer">
       <p>
-        Data:{" "}
+        {t("Data:")}{" "}
         <a href="https://firms.modaps.eosdis.nasa.gov/" target="_blank" rel="noreferrer">
           NASA FIRMS (MODIS &amp; VIIRS)
         </a>{" "}
-        · Map tiles © OpenStreetMap contributors · Team InnovaSoft · NASA Space Apps Challenge 2026
+        · {t("Map tiles © OpenStreetMap contributors")} · {t("Team InnovaSoft")} · NASA Space Apps Challenge 2026
       </p>
     </footer>
   );
@@ -67,10 +76,11 @@ export function ConnectionBanner({ source, forced, attempt, attempts, onUseDemo,
           <WakingIcon size={20} />
         </span>
         <span className="banner-text">
-          <strong>Waking up the server…</strong> The free server sleeps when idle; this can take up to a minute (attempt {attempt} of {attempts}).
+          <strong>{t("Waking up the server…")}</strong>{" "}
+          {t("The free server sleeps when idle; this can take up to a minute (attempt {a} of {n}).", { a: attempt, n: attempts })}
         </span>
         <button type="button" className="btn btn-ghost btn-sm" onClick={onUseDemo}>
-          Use demo data now
+          {t("Use demo data now")}
         </button>
       </div>
     );
@@ -81,14 +91,14 @@ export function ConnectionBanner({ source, forced, attempt, attempts, onUseDemo,
         <SatelliteIcon size={20} />
       </span>
       <span className="banner-text">
-        <strong>Demo data.</strong>{" "}
+        <strong>{t("Demo data.")}</strong>{" "}
         {forced
-          ? "This build runs without a server: numbers are synthetic samples that mimic the real seasonal pattern."
-          : "The live server could not be reached, so you are seeing synthetic sample data. Do not use it for decisions."}
+          ? t("This build runs without a server: numbers are synthetic samples that mimic the real seasonal pattern.")
+          : t("The live server could not be reached, so you are seeing synthetic sample data. Do not use it for decisions.")}
       </span>
       {!forced && (
         <button type="button" className="btn btn-ghost btn-sm" onClick={onRetryLive}>
-          Try the live server again
+          {t("Try the live server again")}
         </button>
       )}
     </div>

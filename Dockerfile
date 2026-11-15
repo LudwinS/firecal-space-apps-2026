@@ -33,4 +33,5 @@ USER user
 
 # Render define PORT (10000 por defecto); en local se usa 7860.
 EXPOSE 7860
-CMD ["sh", "-c", "uvicorn firecal.api.app:app --host 0.0.0.0 --port ${PORT:-7860}"]
+# exec: uvicorn queda como PID 1 y recibe SIGTERM directo (apagado limpio en cada redeploy).
+CMD ["sh", "-c", "exec uvicorn firecal.api.app:app --host 0.0.0.0 --port ${PORT:-7860}"]

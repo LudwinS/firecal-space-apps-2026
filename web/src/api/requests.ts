@@ -1,4 +1,5 @@
 // Armado y validación de requests a partir del estado de la UI.
+import { t } from "../i18n";
 import type { AreaSpec, GeoJSONMultiPolygon, GeoJSONPolygon, QueryRequest } from "./types";
 
 export type AreaMode = "country" | "draw" | "point";
@@ -62,13 +63,13 @@ function parseNum(s: string): number | null {
 export function buildArea(state: AreaState): Result<AreaSpec> {
   switch (state.mode) {
     case "country":
-      if (!state.country) return { ok: false, error: "Choose a country." };
+      if (!state.country) return { ok: false, error: t("Choose a country.") };
       return { ok: true, value: { country: state.country } };
     case "draw":
-      if (!state.drawn) return { ok: false, error: "Draw a rectangle or polygon on the map." };
+      if (!state.drawn) return { ok: false, error: t("Draw a rectangle or polygon on the map.") };
       if (state.drawn.kind === "bbox") {
         const bbox = normalizeBbox(state.drawn.bbox);
-        if (!bbox) return { ok: false, error: "The drawn rectangle is empty. Draw it again." };
+        if (!bbox) return { ok: false, error: t("The drawn rectangle is empty. Draw it again.") };
         return { ok: true, value: { bbox } };
       }
       return { ok: true, value: { polygon: state.drawn.polygon } };
@@ -76,10 +77,10 @@ export function buildArea(state: AreaState): Result<AreaSpec> {
       const lat = parseNum(state.lat);
       const lon = parseNum(state.lon);
       const r = parseNum(state.radiusKm);
-      if (lat === null || lat < -90 || lat > 90) return { ok: false, error: "Latitude must be a number between -90 and 90." };
-      if (lon === null || lon < -180 || lon > 180) return { ok: false, error: "Longitude must be a number between -180 and 180." };
-      if (r === null || r <= 0) return { ok: false, error: "Radius must be a positive number of kilometers." };
-      if (r > MAX_RADIUS_KM) return { ok: false, error: `Radius must be ${MAX_RADIUS_KM} km or less.` };
+      if (lat === null || lat < -90 || lat > 90) return { ok: false, error: t("Latitude must be a number between -90 and 90.") };
+      if (lon === null || lon < -180 || lon > 180) return { ok: false, error: t("Longitude must be a number between -180 and 180.") };
+      if (r === null || r <= 0) return { ok: false, error: t("Radius must be a positive number of kilometers.") };
+      if (r > MAX_RADIUS_KM) return { ok: false, error: t("Radius must be {n} km or less.", { n: MAX_RADIUS_KM }) };
       return { ok: true, value: { point: [round(lat, 5), round(lon, 5), round(r, 3)] } };
     }
   }
@@ -96,8 +97,8 @@ export function normalizeBbox(b: [number, number, number, number]): [number, num
   return [west, south, east, north];
 }
 
-export function referenceYears(t: TimeState): Result<[number, number] | null> {
-  switch (t.refPreset) {
+export function referenceYears(time: TimeState): Result<[number, number] | null> {
+  switch (time.refPreset) {
     case "all":
       return { ok: true, value: null };
     case "modis":
@@ -105,21 +106,21 @@ export function referenceYears(t: TimeState): Result<[number, number] | null> {
     case "viirs":
       return { ok: true, value: [VIIRS_FIRST_YEAR, LAST_ARCHIVE_YEAR] };
     case "custom": {
-      const { refFrom, refTo } = t;
-      if (!Number.isInteger(refFrom) || !Number.isInteger(refTo)) return { ok: false, error: "Reference years must be whole years." };
-      if (refFrom > refTo) return { ok: false, error: "Reference period: the first year must not be after the last year." };
-      if (refTo - refFrom < 2) return { ok: false, error: "Reference period needs at least 3 years." };
+      const { refFrom, refTo } = time;
+      if (!Number.isInteger(refFrom) || !Number.isInteger(refTo)) return { ok: false, error: t("Reference years must be whole years.") };
+      if (refFrom > refTo) return { ok: false, error: t("Reference period: the first year must not be after the last year.") };
+      if (refTo - refFrom < 2) return { ok: false, error: t("Reference period needs at least 3 years.") };
       return { ok: true, value: [refFrom, refTo] };
     }
   }
 }
 
-export function dateRange(t: TimeState): Result<{ start: string; end: string | null }> {
-  if (t.startYear > t.endYear) return { ok: false, error: "Start year must not be after end year." };
+export function dateRange(time: TimeState): Result<{ start: string; end: string | null }> {
+  if (time.startYear > time.endYear) return { ok: false, error: t("Start year must not be after end year.") };
   // FIRMS MODIS arranca el 2000-11-01.
-  const start = t.startYear <= FIRST_YEAR ? "2000-11-01" : `${t.startYear}-01-01`;
+  const start = time.startYear <= FIRST_YEAR ? "2000-11-01" : `${time.startYear}-01-01`;
   // Año en curso = "hasta el último dato disponible".
-  const end = t.endYear >= CURRENT_YEAR ? null : `${t.endYear}-12-31`;
+  const end = time.endYear >= CURRENT_YEAR ? null : `${time.endYear}-12-31`;
   return { ok: true, value: { start, end } };
 }
 
@@ -136,6 +137,46 @@ export function buildQuery(area: AreaState, time: TimeState): Result<QueryReques
   };
 }
 
+export type Bbox = [number, number, number, number];
+
+/** Box [west, south, east, north] around every country that has data, with a small margin (degrees). */
+export function coverageBox(countries: { bbox: Bbox }[], margin = 0.3): Bbox | null {
+  if (countries.length === 0) return null;
+  const west = Math.min(...countries.map((c) => c.bbox[0])) - margin;
+  const south = Math.min(...countries.map((c) => c.bbox[1])) - margin;
+  const east = Math.max(...countries.map((c) => c.bbox[2])) + margin;
+  const north = Math.max(...countries.map((c) => c.bbox[3])) + margin;
+  return [west, south, east, north];
+}
+
+function ringBounds(coords: unknown, acc: Bbox): Bbox {
+  if (Array.isArray(coords) && typeof coords[0] === "number" && typeof coords[1] === "number") {
+    const [x, y] = coords as number[];
+    return [Math.min(acc[0], x), Math.min(acc[1], y), Math.max(acc[2], x), Math.max(acc[3], y)];
+  }
+  if (Array.isArray(coords)) for (const c of coords) acc = ringBounds(c, acc);
+  return acc;
+}
+
+/** True when the area has no overlap with the covered box (a point counts by its center). */
+export function outsideCoverage(area: AreaSpec, box: Bbox): boolean {
+  let b: Bbox | null = null;
+  if (area.point) b = [area.point[1], area.point[0], area.point[1], area.point[0]];
+  else if (area.bbox) b = area.bbox;
+  else if (area.polygon) b = ringBounds(area.polygon.coordinates, [Infinity, Infinity, -Infinity, -Infinity]);
+  if (!b) return false;
+  return b[2] < box[0] || b[0] > box[2] || b[3] < box[1] || b[1] > box[3];
+}
+
+/** buildQuery + check that the area falls inside the region that has data. */
+export function buildCoveredQuery(area: AreaState, time: TimeState, box: Bbox | null): Result<QueryRequest> {
+  const q = buildQuery(area, time);
+  if (q.ok && box && outsideCoverage(q.value.area, box)) {
+    return { ok: false, error: t("That place is outside the region FireCal covers. Choose a location inside the highlighted area of the map.") };
+  }
+  return q;
+}
+
 /** Stable cache key for a request. */
 export function requestKey(req: unknown): string {
   return JSON.stringify(req);
@@ -143,11 +184,11 @@ export function requestKey(req: unknown): string {
 
 /** Short English label for an area (used in headings and file names). */
 export function describeArea(area: AreaSpec): string {
-  if (area.country) return area.country.replace(/_/g, " ");
-  if (area.bbox) return `Box ${area.bbox.map((v) => v.toFixed(2)).join(", ")}`;
-  if (area.point) return `${area.point[2]} km around ${area.point[0].toFixed(3)}, ${area.point[1].toFixed(3)}`;
-  if (area.polygon) return "Drawn polygon";
-  return "Area";
+  if (area.country) return t(area.country.replace(/_/g, " "));
+  if (area.bbox) return t("Box {box}", { box: area.bbox.map((v) => v.toFixed(2)).join(", ") });
+  if (area.point) return t("{r} km around {lat}, {lon}", { r: area.point[2], lat: area.point[0].toFixed(3), lon: area.point[1].toFixed(3) });
+  if (area.polygon) return t("Drawn polygon");
+  return t("Area");
 }
 
 export function fileSlug(area: AreaSpec): string {

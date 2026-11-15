@@ -118,6 +118,14 @@ export interface PersistentSourceProps {
   name?: string;
   kind?: string;
   n_detections?: number;
+  // Lo que escribe clean.persistent_sources_geojson:
+  cluster_id?: number;
+  n_hotspots?: number;
+  n_years?: number;
+  n_months?: number;
+  first_date?: string;
+  last_date?: string;
+  countries?: string[];
   [key: string]: unknown;
 }
 

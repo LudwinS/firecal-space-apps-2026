@@ -1,5 +1,6 @@
-// Cliente HTTP de la API FireCal (FastAPI). El backend puede estar dormido (Hugging Face),
+// Cliente HTTP de la API FireCal (FastAPI). El backend puede estar dormido (plan gratuito de Render),
 // así que distinguimos "no responde" (ApiError.unreachable) de errores con detalle.
+import { t } from "../i18n";
 import { mockApi } from "./mock";
 import type { FireCalApi } from "./types";
 
@@ -34,14 +35,14 @@ async function call(path: string, init: RequestInit = {}, timeoutMs = DEFAULT_TI
   try {
     res = await fetch(API_URL + path, { ...init, signal: ctrl.signal });
   } catch (e) {
-    const msg = e instanceof DOMException && e.name === "AbortError" ? "The server took too long to answer." : "Could not reach the server.";
+    const msg = e instanceof DOMException && e.name === "AbortError" ? t("The server took too long to answer.") : t("Could not reach the server.");
     throw new ApiError(msg, null, true);
   } finally {
     clearTimeout(timer);
   }
   if (!res.ok) {
     const waking = res.status === 502 || res.status === 503 || res.status === 504;
-    let detail = `Server error (${res.status}).`;
+    let detail = t("Server error ({code}).", { code: res.status });
     try {
       const body = await res.json();
       if (typeof body?.detail === "string") detail = body.detail;
@@ -88,7 +89,7 @@ export function apiFor(source: DataSource): FireCalApi {
 }
 
 /**
- * Pings /api/health a few times (a sleeping Hugging Face Space can take ~1 min to wake up).
+ * Pings /api/health a few times (a sleeping free Render service can take ~1 min to wake up).
  * Resolves true as soon as it answers; false after all attempts fail.
  */
 export async function wakeUp(
@@ -115,7 +116,7 @@ export async function wakeUp(
 export function errorMessage(e: unknown): string {
   if (e instanceof ApiError) return e.message;
   if (e instanceof Error) return e.message;
-  return "Unexpected error.";
+  return t("Unexpected error.");
 }
 
 export function isUnreachable(e: unknown): boolean {
