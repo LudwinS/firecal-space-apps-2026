@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { CALENDAR_RAMP, DARK_CELL_OUTLINE, NO_DATA_COLOR, sqrtScaleInverse, ZERO_COLOR } from "../lib/colors";
 import { fmtCount } from "../lib/format";
 
@@ -6,7 +7,7 @@ export function RampLegend({ max }: { max: number }) {
   const gradient = `linear-gradient(to right, ${CALENDAR_RAMP.join(", ")})`;
   const mid = Math.round(sqrtScaleInverse(0.5, max));
   return (
-    <div className="legend" role="note" aria-label={`Color scale: light means few detections, dark means many, up to ${fmtCount(max)} per month (square-root scale).`}>
+    <div className="legend" role="note" aria-label={t("Color scale: light means few detections, dark means many, up to {n} per month (square-root scale).", { n: fmtCount(max) })}>
       <span className="legend-swatch" style={{ background: ZERO_COLOR }} aria-hidden="true" />
       <span className="legend-text">0</span>
       <span className="legend-ramp" aria-hidden="true">
@@ -18,8 +19,8 @@ export function RampLegend({ max }: { max: number }) {
         </span>
       </span>
       <span className="legend-swatch" style={{ background: NO_DATA_COLOR }} aria-hidden="true" />
-      <span className="legend-text">No data</span>
-      <span className="legend-note">Darker = more fire · detections / month, square-root scale</span>
+      <span className="legend-text">{t("No data")}</span>
+      <span className="legend-note">{t("Darker = more fire · detections / month, square-root scale")}</span>
     </div>
   );
 }

@@ -3,7 +3,8 @@ import { useMemo } from "react";
 import type { MonthPick } from "../../lib/monthDetail";
 import type { CalendarResponse } from "../../api/types";
 import { colorBucket, DARK_CELL_OUTLINE, heatmapPieces, needsOutline, THEME } from "../../lib/colors";
-import { fmtCount } from "../../lib/format";
+import { t, useLang } from "../../i18n";
+import { fmtCount, monthShort, monthsShort } from "../../lib/format";
 import { gridMax } from "../../lib/stats";
 import { RampLegend } from "../RampLegend";
 import { Chart } from "./Chart";
@@ -37,6 +38,7 @@ interface Props {
 }
 
 export function CalendarHeatmap({ calendar, variable = "harmonized", max, compact = false, title, selected = null, onSelect }: Props) {
+  const lang = useLang();
   const grid = gridFor(calendar, variable);
   const colorMax = max ?? gridMax(grid);
 
@@ -64,10 +66,10 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
       const vi = calendar.raw_viirs[yi][m];
       const range = lo !== null && hi !== null && (lo !== h || hi !== h) ? ` <span style="color:${MUTED_TEXT}">(${fmtCount(lo)}–${fmtCount(hi)})</span>` : "";
       return [
-        `<strong>${calendar.months[m]} ${y}</strong>`,
-        `Harmonized: <strong>${fmtCount(h)}</strong>${range}`,
-        `Raw MODIS: ${fmtCount(mo)}`,
-        `Raw VIIRS: ${vi === null ? "not available (before 2012)" : fmtCount(vi)}`,
+        `<strong>${monthShort(m)} ${y}</strong>`,
+        `${t("Harmonized")}: <strong>${fmtCount(h)}</strong>${range}`,
+        `${t("Raw MODIS")}: ${fmtCount(mo)}`,
+        `${t("Raw VIIRS")}: ${vi === null ? t("not available (before 2012)") : fmtCount(vi)}`,
       ].join("<br/>");
     };
 
@@ -78,7 +80,7 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
       tooltip: { ...TOOLTIP_STYLE, trigger: "item", confine: true, formatter: tooltip as never },
       xAxis: {
         type: "category",
-        data: calendar.months,
+        data: monthsShort(),
         position: "top",
         axisTick: { show: false },
         axisLine: { show: false },
@@ -112,10 +114,19 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
     };
     const s =
       peak.v >= 0
-        ? `Calendar heatmap of ${VARIABLE_LABEL[variable].toLowerCase()} fire detections per month, ${calendar.years[0]} to ${calendar.years[calendar.years.length - 1]}. Highest month: ${calendar.months[peak.m]} ${peak.y} with ${fmtCount(peak.v)} detections.`
-        : "Calendar heatmap with no data.";
+        ? t("Calendar heatmap of {what} fire detections per month, {from} to {to}. Highest month: {month} {year} with {n} detections.", {
+            what: t(VARIABLE_LABEL[variable]).toLowerCase(),
+            from: calendar.years[0],
+            to: calendar.years[calendar.years.length - 1],
+            month: monthShort(peak.m),
+            year: peak.y,
+            n: fmtCount(peak.v),
+          })
+        : t("Calendar heatmap with no data.");
     return { option: opt, summary: s };
-  }, [calendar, grid, colorMax, compact, variable, selected]);
+    // `lang`: los textos del gráfico se traducen al construir la opción.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [calendar, grid, colorMax, compact, variable, selected, lang]);
 
   const rowH = compact ? 13 : 17;
   const height = Math.max(160, calendar.years.length * rowH + 40);
@@ -141,8 +152,8 @@ export function CalendarHeatmap({ calendar, variable = "harmonized", max, compac
       <RampLegend max={colorMax} />
       {variable === "harmonized" && (
         <p className="legend-note years-note">
-          <span className="swatch-text sand">Years in sand</span> = MODIS converted to VIIRS-equivalent ·{" "}
-          <span className="swatch-text white">white</span> = VIIRS observed
+          <span className="swatch-text sand">{t("Years in sand")}</span> = {t("MODIS converted to VIIRS-equivalent")} ·{" "}
+          <span className="swatch-text white">{t("white")}</span> = {t("VIIRS observed")}
         </p>
       )}
     </figure>

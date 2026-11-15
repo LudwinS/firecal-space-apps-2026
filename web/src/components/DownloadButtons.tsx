@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 import { useState } from "react";
 import { errorMessage, saveBlob } from "../api/client";
 import { fileSlug } from "../api/requests";
@@ -25,7 +26,7 @@ export function DownloadButtons({ api, query, large = false }: Props) {
       const stamp = new Date().toISOString().slice(0, 10);
       saveBlob(blob, `firecal_${fileSlug(query.area)}_${stamp}.${kind}`);
     } catch (e) {
-      setError(`Download failed: ${errorMessage(e)}`);
+      setError(t("Download failed: {msg}", { msg: errorMessage(e) }));
     } finally {
       setBusy(null);
     }
@@ -36,10 +37,10 @@ export function DownloadButtons({ api, query, large = false }: Props) {
   return (
     <div className={large ? "downloads downloads-lg" : "downloads"}>
       <button type="button" className={`btn btn-primary${size}`} onClick={() => download("pdf")} disabled={!query || busy !== null} aria-busy={busy === "pdf"}>
-        <ReportIcon size={large ? 22 : 18} /> {busy === "pdf" ? "Preparing report…" : "Download PDF report"}
+        <ReportIcon size={large ? 22 : 18} /> {busy === "pdf" ? t("Preparing report…") : t("Download PDF report")}
       </button>
       <button type="button" className={`btn btn-outline${size}`} onClick={() => download("csv")} disabled={!query || busy !== null} aria-busy={busy === "csv"}>
-        <CsvIcon size={large ? 22 : 18} /> {busy === "csv" ? "Preparing CSV…" : "Download hotspots CSV"}
+        <CsvIcon size={large ? 22 : 18} /> {busy === "csv" ? t("Preparing CSV…") : t("Download hotspots CSV")}
       </button>
       {error && (
         <p className="form-error" role="alert">

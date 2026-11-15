@@ -1,6 +1,7 @@
+import { t } from "../i18n";
 import type { CalendarResponse } from "../api/types";
 import { cellColor, DARK_CELL_OUTLINE, NO_DATA_COLOR, needsOutline } from "../lib/colors";
-import { fmtCount } from "../lib/format";
+import { fmtCount, monthShort } from "../lib/format";
 import type { MonthPick } from "../lib/monthDetail";
 import { gridMax } from "../lib/stats";
 import { RampLegend } from "./RampLegend";
@@ -24,24 +25,24 @@ export function MiniCalendar({ calendar, lastYears = 10, selected = null, onSele
   return (
     <figure className="mini-cal">
       <figcaption className="mini-cal-head">
-        <span className="heatmap-title">Last {years.length} years, month by month</span>
-        <span className="mini-cal-sub">Darker = more fire · {onSelect ? "tap a month for details" : "harmonized detections"}</span>
+        <span className="heatmap-title">{t("Last {n} years, month by month", { n: years.length })}</span>
+        <span className="mini-cal-sub">{onSelect ? t("Darker = more fire · tap a month for details") : t("Darker = more fire · harmonized detections")}</span>
       </figcaption>
       <div className="mini-cal-scroll">
         <table className="mini-cal-table">
-          <caption className="sr-only">Harmonized fire detections per month (VIIRS-equivalent)</caption>
+          <caption className="sr-only">{t("Harmonized fire detections per month (VIIRS-equivalent)")}</caption>
           <colgroup>
             <col className="year-col" />
           </colgroup>
           <thead>
             <tr>
               <th scope="col">
-                <span className="sr-only">Year</span>
+                <span className="sr-only">{t("Year")}</span>
               </th>
-              {calendar.months.map((m) => (
+              {calendar.months.map((m, i) => (
                 <th key={m} scope="col">
-                  {m.slice(0, 1)}
-                  <span className="sr-only">{m.slice(1)}</span>
+                  {monthShort(i).slice(0, 1)}
+                  <span className="sr-only">{monthShort(i).slice(1)}</span>
                 </th>
               ))}
             </tr>
@@ -53,7 +54,10 @@ export function MiniCalendar({ calendar, lastYears = 10, selected = null, onSele
                 {rows[i].map((v, m) => {
                   const yearIndex = from + i;
                   const isSel = selected !== null && selected.yearIndex === yearIndex && selected.month === m;
-                  const label = `${calendar.months[m]} ${y}: ${v === null ? "no data" : `${fmtCount(v)} detections`}`;
+                  const label =
+                    v === null
+                      ? t("{month} {year}: no data", { month: monthShort(m), year: y })
+                      : t("{month} {year}: {n} detections", { month: monthShort(m), year: y, n: fmtCount(v) });
                   return (
                     <td
                       key={m}

@@ -1,4 +1,23 @@
 import { MONTHS } from "../api/types";
+import { getLang, t } from "../i18n";
+
+const MONTHS_ES = ["Ene", "Feb", "Mar", "Abr", "May", "Jun", "Jul", "Ago", "Sep", "Oct", "Nov", "Dic"];
+const MONTH_NAMES_ES = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
+
+/** Month abbreviation in the current language (0 = January). */
+export function monthShort(i: number): string {
+  return (getLang() === "es" ? MONTHS_ES : MONTHS)[i] ?? "";
+}
+
+/** The 12 month abbreviations in the current language. */
+export function monthsShort(): string[] {
+  return MONTHS.map((_, i) => monthShort(i));
+}
+
+/** Full month name in the current language (0 = January): "March" / "marzo". */
+export function monthLong(i: number): string {
+  return (getLang() === "es" ? MONTH_NAMES_ES : MONTH_NAMES)[i] ?? "";
+}
 
 const nf0 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 0 });
 const nf1 = new Intl.NumberFormat("en-US", { maximumFractionDigits: 1 });
@@ -14,25 +33,27 @@ export function fmtPct(v: number | null | undefined, signed = false): string {
   return signed && v > 0 ? "+" + s : s;
 }
 
-/** "2025-03-01" -> "March 2025" */
+/** "2025-03-01" -> "March 2025" / "marzo de 2025" */
 export function fmtMonthLong(iso: string): string {
   const [y, m] = iso.split("-").map(Number);
-  const d = new Date(Date.UTC(y, (m || 1) - 1, 1));
-  return d.toLocaleDateString("en-US", { month: "long", year: "numeric", timeZone: "UTC" });
+  const name = monthLong((m || 1) - 1);
+  return getLang() === "es" ? `${name} de ${y}` : `${name} ${y}`;
 }
 
 /** "2025-03-01" -> "Mar 2025" */
 export function fmtMonthShort(iso: string): string {
   const [y, m] = iso.split("-").map(Number);
-  return `${MONTHS[(m || 1) - 1]} ${y}`;
+  return `${monthShort((m || 1) - 1)} ${y}`;
 }
 
 const MONTH_NAMES = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/** "Mar" -> "March" (leaves unknown strings untouched). */
+/** "Mar" (as sent by the API) -> "March" / "Marzo" (leaves unknown strings untouched). */
 export function fullMonthName(short: string): string {
   const i = MONTHS.findIndex((m) => m.toLowerCase() === short.slice(0, 3).toLowerCase());
-  return i >= 0 ? MONTH_NAMES[i] : short;
+  if (i < 0) return short;
+  const name = monthLong(i);
+  return name[0].toUpperCase() + name.slice(1);
 }
 
 /** "El_Salvador" -> "El Salvador" */
@@ -51,5 +72,5 @@ export function prettyMethod(id: string): string {
     k_cell_eb: "Ratio per grid cell and month (empirical Bayes)",
     ensemble_eb_gbm: "Ensemble: empirical Bayes + gradient boosting",
   };
-  return known[id] ?? id.replace(/_/g, " ");
+  return known[id] ? t(known[id]) : id.replace(/_/g, " ");
 }

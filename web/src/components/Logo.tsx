@@ -1,3 +1,4 @@
+import { t } from "../i18n";
 // Isotipo FireCal (versión oscura): dos mitades de llama (MODIS y VIIRS) sobre celdas de calendario.
 
 interface MarkProps {
@@ -32,7 +33,7 @@ export function Logo({ size = 40, tagline, asHeading = false }: { size?: number;
       <div className="logo-text">
         <Word className="logo-word">
           Fire<span className="logo-accent">Cal</span>
-          {asHeading && <span className="sr-only"> — Harmonized Burning Activity Calendar</span>}
+          {asHeading && <span className="sr-only"> — {t("Harmonized Burning Activity Calendar")}</span>}
         </Word>
         {tagline && <span className="logo-tagline">{tagline}</span>}
       </div>

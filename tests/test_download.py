@@ -1,4 +1,6 @@
+
 import pandas as pd
+import pytest
 
 from firecal.download import normalize
 
@@ -31,8 +33,6 @@ def test_assign_country_uses_nearest_reference_within_threshold():
 def test_fetch_area_splits_in_5_day_blocks_and_hides_key(monkeypatch):
     import datetime as dt
 
-    import pytest
-
     from firecal import download
 
     calls = []
@@ -60,7 +60,6 @@ def test_fetch_area_splits_in_5_day_blocks_and_hides_key(monkeypatch):
 def test_network_errors_do_not_leak_the_map_key(monkeypatch):
     import datetime as dt
 
-    import pytest
     import requests
 
     from firecal import download
