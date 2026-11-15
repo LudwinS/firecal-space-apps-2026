@@ -13,3 +13,6 @@ data
 tests
 app
 frontend/node_modules
+web
+sonar-project.properties
+coverage.xml

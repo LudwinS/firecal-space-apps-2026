@@ -309,6 +309,33 @@ def compare(req: C.CompareRequest) -> C.CompareResponse:
     return C.CompareResponse(a=cal_a, b=cal_b, monthly_a=medians(cal_a), monthly_b=medians(cal_b), correlation=corr)
 
 
+def export_chunks(req: C.QueryRequest):
+    """Igual que export_points pero en trozos de un año, para no armar el CSV completo en memoria.
+
+    Valida todo ANTES de devolver el generador, así los errores siguen siendo 404/422 y no un stream roto.
+    """
+    region = resolve(req.area)
+    start, end, _, _ = _window(req.start, req.end)
+    st = data.get_store()
+    if region.country is not None and region.country not in set(st.countries["country"]):
+        raise AreaNotFound(f"Unknown country '{region.country}'. See GET /api/areas")
+    cols = [c for c in EXPORT_COLUMNS if c in st.harm.columns]
+
+    def gen():
+        yield ",".join(cols) + "\n"
+        for year in range(start.year, end.year + 1):
+            y0 = max(start, date(year, 1, 1))
+            y1 = min(end, date(year, 12, 31))
+            df = select_points(st.harm, region, cols, y0, y1).sort_values("acq_date", kind="stable")
+            if "satellite" in df:
+                df = df[df["satellite"] != "virtual"]
+            if len(df):
+                df["acq_date"] = pd.to_datetime(df["acq_date"]).dt.strftime("%Y-%m-%d")
+                yield df.to_csv(index=False, header=False)
+
+    return gen()
+
+
 def export_points(req: C.QueryRequest) -> pd.DataFrame:
     region = resolve(req.area)
     start, end, _, _ = _window(req.start, req.end)

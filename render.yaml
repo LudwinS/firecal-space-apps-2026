@@ -1,0 +1,14 @@
+# Blueprint de Render: API FireCal en el plan gratuito.
+services:
+  - type: web
+    name: firecal-api
+    runtime: docker
+    plan: free
+    region: oregon
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      # URL(s) del frontend separadas por comas (se completa con la URL de Vercel)
+      - key: FIRECAL_CORS_ORIGINS
+        sync: false

@@ -14,7 +14,7 @@ import re
 
 from fastapi import APIRouter, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import JSONResponse, Response, StreamingResponse
 
 from firecal import contracts as C
 from firecal.api import data, queries, report
@@ -92,9 +92,9 @@ def _slug(req: C.QueryRequest) -> str:
 
 @api.post("/export/csv")
 def export_csv(req: C.QueryRequest) -> Response:
-    df = queries.export_points(req)
-    return Response(
-        content=df.to_csv(index=False),
+    # Streaming por año: exportar toda la región (2 M de filas) no cabe en 512 MB de una sola vez.
+    return StreamingResponse(
+        queries.export_chunks(req),
         media_type="text/csv",
         headers={"Content-Disposition": f'attachment; filename="{_slug(req)}.csv"'},
     )

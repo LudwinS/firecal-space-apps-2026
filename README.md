@@ -62,7 +62,7 @@ uncertainty range derived from the validation errors.
 ```
 NASA FIRMS ─► download/build ─► clean (quality + DBSCAN) ─► features (0.25° × month)
           ─► harmonize (6 methods, leave-one-year-out) ─► parquet/json
-          ─► FastAPI + DuckDB (Hugging Face Spaces, Docker) ─► React + Vite (Vercel)
+          ─► FastAPI + DuckDB (Render, Docker) ─► React + Vite (Vercel)
 ```
 
 - `src/firecal/` — offline pipeline (`download`, `clean`, `features`, `harmonize`) and shared contracts.

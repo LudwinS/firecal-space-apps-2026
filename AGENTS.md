@@ -10,7 +10,7 @@ Reto "Harmonization of MODIS and VIIRS Hot Spots", NASA Space Apps 2026, equipo 
 - `src/firecal/features.py`: dataset celda 0.25° × mes.
 - `src/firecal/harmonize.py`: competencia de 6 métodos con validación deja-un-año-fuera; aplica el ganador (ensamble).
 - `src/firecal/contracts.py`: **contratos compartidos** (archivos, columnas, modelos de la API). No los cambies sin avisar.
-- `src/firecal/api/`: API FastAPI (DuckDB). Despliegue en Hugging Face Spaces con `Dockerfile` y `deploy/`.
+- `src/firecal/api/`: API FastAPI (DuckDB). Despliegue en Render (plan Free) con `Dockerfile` y `render.yaml`; los datos se bajan del release `data-v1`.
 - `web/`: frontend React + Vite + TypeScript. Despliegue en Vercel (root `web/`).
 - `tests/` (pytest) y `web/src/**/*.test.ts` (Vitest).
 

@@ -78,27 +78,48 @@ class Store:
     key: tuple = field(default=())
 
 
-def _read(p: Path, cols: list[str]) -> pd.DataFrame:
+TEXT_COLS = ("sensor", "country", "satellite")
+FLOAT_COLS = ("latitude", "longitude", "frp", "weight", "weight_lo", "weight_hi")
+
+
+def _read(p: Path, cols: list[str], filters=None) -> pd.DataFrame:
+    """Lee con Arrow ya compacto (texto como diccionario, floats de 32 bits) para no duplicar memoria al cargar."""
+    import pyarrow as pa
     import pyarrow.parquet as pq
 
     available = set(pq.read_schema(p).names)
-    return pd.read_parquet(p, columns=[c for c in cols if c in available])
+    use = [c for c in cols if c in available]
+    table = pq.read_table(p, columns=use, filters=filters, read_dictionary=[c for c in TEXT_COLS if c in use])
+    for c in FLOAT_COLS:
+        if c in use:
+            i = table.schema.get_field_index(c)
+            table = table.set_column(i, c, table.column(c).cast(pa.float32()))
+    df = table.to_pandas(self_destruct=True, split_blocks=True)
+    del table
+    # El pool de Arrow guarda la memoria liberada; devolverla al sistema evita ~500 MB retenidos.
+    pa.default_memory_pool().release_unused()
+    return df
 
 
 def _tidy(df: pd.DataFrame) -> pd.DataFrame:
+    # Tipos compactos: el plan gratuito de hosting tiene 512 MB de RAM y son ~4 M de filas.
+    # Texto repetido -> category (1 byte por fila); coordenadas y pesos -> float32 (~1 m de precisión, de sobra).
     df["acq_date"] = pd.to_datetime(df["acq_date"]).astype("datetime64[us]")
-    for c in ("sensor", "country", "satellite"):
-        if c in df:
-            df[c] = df[c].astype(str)
+    for c in TEXT_COLS:
+        if c in df and not isinstance(df[c].dtype, pd.CategoricalDtype):
+            df[c] = df[c].astype(str).astype("category")
+    for c in FLOAT_COLS:
+        if c in df and df[c].dtype != "float32":
+            df[c] = df[c].astype("float32")
     return df.reset_index(drop=True)
 
 
 def _load_raw() -> pd.DataFrame:
     clean = path("hotspots_clean")
     if clean.exists():
-        df = _read(clean, RAW_COLS + ["satellite", "frp", "passes_quality", "persistent"])
-        mask = df["passes_quality"].fillna(True).astype(bool) & ~df["persistent"].fillna(False).astype(bool)
-        df = df.loc[mask].drop(columns=["passes_quality", "persistent"])
+        # Filtra al leer (calidad y fuentes persistentes) para no cargar filas que se descartan.
+        keep = [[("passes_quality", "=", True), ("persistent", "=", False)]]
+        df = _read(clean, RAW_COLS + ["satellite", "frp"], filters=keep)
     else:
         df = _read(path("hotspots"), RAW_COLS + ["satellite", "frp"])
     return _tidy(df)
@@ -134,12 +155,13 @@ def _build() -> Store:
         harm = _provisional(raw)
     dates = harm["acq_date"]
     cover = {s: (g.min().to_period("M").to_timestamp(), g.max().to_period("M").to_timestamp())
-             for s, g in raw.groupby("sensor")["acq_date"]}
+             for s, g in raw.groupby("sensor", observed=True)["acq_date"]}
     base = raw if len(raw) else harm
-    countries = (base.groupby("country")
+    countries = (base.groupby("country", observed=True)
                  .agg(west=("longitude", "min"), south=("latitude", "min"),
                       east=("longitude", "max"), north=("latitude", "max"))
                  .reset_index())
+    countries["country"] = countries["country"].astype(str)
     return Store(
         harm=harm, raw=raw, method=current_method(),
         first_month=dates.min().to_period("M").to_timestamp(),

@@ -1,7 +1,6 @@
-# API FireCal para Hugging Face Spaces (sdk: docker, puerto 7860).
-# Antes de construir, copia a deploy/data/ los archivos de data/processed que use la API:
-#   hotspots_clean.parquet (o hotspots.parquet), hotspots_harmonized.parquet,
-#   model_metrics.json, persistent_sources.geojson
+# API FireCal (FastAPI) en un contenedor. Pensado para el plan gratuito de Render (512 MB de RAM),
+# pero corre igual en cualquier host Docker. Los datos procesados se bajan del release "data-v1"
+# del repositorio de GitHub (data/ no se versiona).
 FROM python:3.12-slim
 
 COPY --from=ghcr.io/astral-sh/uv:0.11.27 /uv /uvx /bin/
@@ -11,7 +10,6 @@ ENV UV_COMPILE_BYTECODE=1 \
     UV_NO_DEV=1 \
     PYTHONUNBUFFERED=1
 
-# HF Spaces ejecuta el contenedor con el usuario 1000
 RUN useradd -m -u 1000 user
 WORKDIR /app
 
@@ -21,8 +19,10 @@ RUN uv sync --locked --no-dev --no-install-project
 COPY src ./src
 RUN uv sync --locked --no-dev
 
-# Datos procesados (carpeta llenada antes del build; ignorada por git en este repo)
-COPY deploy ./deploy
+# Datos procesados (NASA FIRMS, Centroamérica 2000-11 → 2025-12)
+ARG DATA_URL=https://github.com/LudwinS/firecal-space-apps-2026/releases/download/data-v1
+ADD ${DATA_URL}/hotspots_clean.parquet ${DATA_URL}/hotspots_harmonized.parquet \
+    ${DATA_URL}/model_metrics.json ${DATA_URL}/persistent_sources.geojson /app/deploy/data/
 
 ENV PATH="/app/.venv/bin:$PATH" \
     FIRECAL_DATA_DIR=/app/deploy/data \
@@ -31,5 +31,6 @@ ENV PATH="/app/.venv/bin:$PATH" \
 RUN chown -R user:user /app
 USER user
 
+# Render define PORT (10000 por defecto); en local se usa 7860.
 EXPOSE 7860
-CMD ["uvicorn", "firecal.api.app:app", "--host", "0.0.0.0", "--port", "7860"]
+CMD ["sh", "-c", "uvicorn firecal.api.app:app --host 0.0.0.0 --port ${PORT:-7860}"]
