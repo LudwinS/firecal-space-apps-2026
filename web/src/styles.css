@@ -1731,3 +1731,298 @@ input:focus-visible {
   font-family: var(--font-mono);
   font-size: 1rem;
 }
+
+/* ------------------------------------------------------------ mejoras de UX (QA) */
+/* Título del nivel + botón (i) que despliega la escala completa */
+.status-level-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.scale-toggle,
+.infotip-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  border: 1.5px solid currentColor;
+  background: transparent;
+  font: 700 13px/1 var(--font-display);
+  font-style: italic;
+  cursor: pointer;
+  padding: 0;
+}
+
+.scale-toggle {
+  width: 32px;
+  height: 32px;
+  font-size: 16px;
+  color: var(--card-kicker);
+  position: relative;
+}
+
+/* Área táctil de 44 px sin agrandar el botón visible */
+.scale-toggle::after,
+.infotip-btn::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.scale-toggle:hover,
+.scale-toggle[aria-expanded="true"] {
+  background: var(--card-kicker);
+  color: var(--card-bg);
+}
+
+/* Recuadro "What does this mean?" */
+.level-meaning {
+  flex: 0 1 280px;
+  align-self: stretch;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 4px;
+  padding: 14px 16px;
+  border-radius: var(--radius);
+  border: 1px solid var(--card-border);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.level-meaning-title {
+  margin: 0;
+  font: 600 13px var(--font-ui);
+  letter-spacing: 0.02em;
+  color: var(--card-kicker);
+}
+
+.level-meaning-text {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.45;
+  color: var(--card-title);
+}
+
+/* Fichas de nivel grandes: cada una con su tinte e ícono; la activa, sólida, con borde grueso y check */
+.level-scale {
+  flex: 1 1 100%;
+  gap: 8px;
+}
+
+.level-chip-lg {
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 16px;
+  font-size: 15px;
+  font-weight: 500;
+  color: #ede8dd;
+  border-width: 1.5px;
+  border-style: solid;
+}
+
+.level-chip-lg.active {
+  border-width: 3px;
+  padding: 6px 14px;
+  font-weight: 700;
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.35);
+}
+
+.level-chip-icon {
+  display: inline-flex;
+}
+
+.level-chip-check {
+  flex: none;
+}
+
+/* Escala completa (se abre con el botón i) */
+.scale-panel {
+  flex: 1 1 100%;
+  padding: 16px;
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, 0.28);
+  border: 1px solid var(--card-border);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.scale-panel[hidden] {
+  display: none;
+}
+
+.scale-panel-title {
+  margin: 0;
+  font: 600 16px var(--font-display);
+  color: var(--card-title);
+}
+
+.scale-panel-text {
+  margin: 0;
+  font-size: 14px;
+  color: var(--card-text);
+}
+
+.scale-rows {
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.scale-row {
+  display: grid;
+  grid-template-columns: minmax(120px, 150px) minmax(0, 1fr);
+  gap: 12px;
+  align-items: center;
+}
+
+.scale-row dt {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--card-title);
+}
+
+.scale-row dd {
+  margin: 0;
+  font-size: 14px;
+  color: var(--card-text);
+}
+
+.scale-swatch {
+  flex: none;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* InfoTip: botón (i) con una explicación de una línea */
+.infotip {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+}
+
+.infotip-btn {
+  position: relative;
+  width: 20px;
+  height: 20px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+
+.infotip-btn:hover,
+.infotip.open .infotip-btn {
+  background: var(--ink-2);
+  color: var(--night);
+}
+
+.infotip-bubble {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 8px);
+  left: -8px;
+  width: max-content;
+  max-width: min(260px, 72vw);
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #0e1714;
+  border: 1px solid #4a5a53;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  color: #ede8dd;
+  font: 400 13px/1.45 var(--font-ui);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: left;
+  white-space: normal;
+  visibility: hidden;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.12s ease;
+}
+
+.infotip-end .infotip-bubble {
+  left: auto;
+  right: -8px;
+}
+
+.infotip:hover .infotip-bubble,
+.infotip-btn:focus-visible + .infotip-bubble,
+.infotip.open .infotip-bubble {
+  visibility: visible;
+  opacity: 1;
+}
+
+.term-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 18px;
+  margin: 0 0 12px;
+  font-size: 0.85rem;
+  color: var(--ink-2);
+}
+
+.term {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.stat-tile dt,
+.stat-note {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+
+/* Estado sin detecciones: ilustración centrada y con aire */
+.state-empty {
+  padding: 40px 20px 44px;
+  gap: 10px;
+}
+
+.empty-art {
+  max-width: 100%;
+  height: auto;
+  margin-bottom: 6px;
+}
+
+@media (max-width: 640px) {
+  /* La tarjeta usa una rejilla de 2 columnas en celular (ver arriba): lo nuevo va a todo el ancho. */
+  .status-level-row {
+    grid-column: 2;
+    align-self: start;
+  }
+
+  .level-meaning,
+  .scale-panel {
+    grid-column: 1 / -1;
+  }
+
+  .level-chip-lg {
+    flex: 1 1 calc(50% - 8px);
+    justify-content: center;
+    padding: 8px 10px;
+  }
+
+  .level-chip-lg.active {
+    padding: 6px 8px;
+  }
+
+  .scale-row {
+    grid-template-columns: 1fr;
+    gap: 4px;
+  }
+
+  .infotip-bubble {
+    max-width: min(240px, 64vw);
+  }
+}

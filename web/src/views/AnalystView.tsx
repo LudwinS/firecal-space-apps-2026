@@ -5,6 +5,7 @@ import { AsyncBlock } from "../components/AsyncBlock";
 import { CalendarHeatmap, VARIABLE_LABEL, type CalendarVariable } from "../components/charts/CalendarHeatmap";
 import { AnomalyChart } from "../components/charts/AnomalyChart";
 import { DownloadButtons } from "../components/DownloadButtons";
+import { InfoTip } from "../components/InfoTip";
 import { MonthDetail } from "../components/MonthDetail";
 import { AnomalyIcon, CalendarIcon, DownloadIcon } from "../components/icons/Icon";
 import { Tabs } from "../components/Tabs";
@@ -66,6 +67,21 @@ export default function AnalystView({ api, sourceKey, query, queryKey, areaName,
                   ))}
                 </div>
               </div>
+              <p className="term-row">
+                <span className="term">
+                  {t("Harmonized")} <InfoTip term={t("Harmonized")} text={t("Counts from both satellite sensors put on one scale, so years before and after 2012 can be compared.")} />
+                </span>
+                <span className="term">
+                  {t("Raw MODIS")} <InfoTip term={t("Raw MODIS")} text={t("What the older MODIS sensor counted (1 km pixels, since 2000). It misses many small fires.")} />
+                </span>
+                <span className="term">
+                  {t("Raw VIIRS")} <InfoTip term={t("Raw VIIRS")} text={t("What the newer VIIRS sensor counted (375 m pixels, since 2012). It sees smaller fires.")} />
+                </span>
+                <span className="term">
+                  {t("hotspot")}{" "}
+                  <InfoTip term={t("hotspot")} align="end" text={t("A place where a satellite detected unusual heat, usually a fire. One fire can produce several hotspots.")} />
+                </span>
+              </p>
               <AsyncBlock state={calendar} what="calendar" minHeight={420} isEmpty={(c) => c.total_raw_hotspots === 0}>
                 {(c) => (
                   <>

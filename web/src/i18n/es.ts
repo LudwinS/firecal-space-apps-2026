@@ -281,4 +281,42 @@ export const ES: Record<string, string> = {
   "not in orbit yet": "aún no estaba en órbita",
   "Estimated from MODIS: VIIRS did not exist yet, so this value is converted to what VIIRS would have seen.":
     "Estimado a partir de MODIS: VIIRS aún no existía, así que este valor se convirtió a lo que VIIRS habría visto.",
+
+  // ---- mejoras de UX (QA): escala de niveles, ayudas y estado vacío
+  "What does this mean?": "¿Qué significa esto?",
+  "Below the 75th percentile of past {month} months: no unusual burning.": "Por debajo del percentil 75 de los meses de {month} anteriores: no hay quemas fuera de lo habitual.",
+  "Between the 75th and 90th percentile of past {month} months: more burning than usual.":
+    "Entre el percentil 75 y el 90 de los meses de {month} anteriores: más quemas de lo habitual.",
+  "Between the 90th and 97.5th percentile of past {month} months: well above usual.":
+    "Entre el percentil 90 y el 97.5 de los meses de {month} anteriores: muy por encima de lo habitual.",
+  "Above the 97.5th percentile of past {month} months: among the highest on record.":
+    "Por encima del percentil 97.5 de los meses de {month} anteriores: entre los más altos registrados.",
+  "Not enough past years to compare this month.": "No hay suficientes años anteriores para comparar este mes.",
+  "No fire was detected, so there is no level to rate.": "No se detectó fuego, así que no hay un nivel que calificar.",
+  "Fewer than 5 detections: too few to rate against past years, so it counts as Normal.":
+    "Menos de 5 detecciones: son muy pocas para compararlas con años anteriores, así que cuenta como Normal.",
+  "Show the full alert scale": "Mostrar la escala de alerta completa",
+  "Hide the full alert scale": "Ocultar la escala de alerta completa",
+  "current level": "nivel actual",
+  "How the alert scale works": "Cómo funciona la escala de alerta",
+  "Each month is compared with the same month in past years. The percentile says how many of those past months had fewer detections.":
+    "Cada mes se compara con el mismo mes de años anteriores. El percentil indica cuántos de esos meses tuvieron menos detecciones.",
+  "Months with 1–4 detections are always Normal, and months with none show No detections instead of a level.":
+    "Los meses con 1 a 4 detecciones son siempre Normal, y los meses sin ninguna muestran «Sin detecciones» en lugar de un nivel.",
+  "What is {term}?": "¿Qué es {term}?",
+  "More information": "Más información",
+  Typical: "Típico",
+  hotspot: "punto de calor",
+  "The middle value for this month in past years: half of them had more detections and half had fewer.":
+    "El valor central para este mes en años anteriores: la mitad tuvo más detecciones y la otra mitad, menos.",
+  "The month that usually has the most fire detections in this area.": "El mes que normalmente tiene más detecciones de fuego en esta área.",
+  "The year with the most fire detections in the period you selected.": "El año con más detecciones de fuego en el periodo que elegiste.",
+  "Counts from both satellite sensors put on one scale, so years before and after 2012 can be compared.":
+    "Conteos de los dos sensores satelitales puestos en una misma escala, para poder comparar los años anteriores y posteriores a 2012.",
+  "What the older MODIS sensor counted (1 km pixels, since 2000). It misses many small fires.":
+    "Lo que contó el sensor MODIS, el más antiguo (píxeles de 1 km, desde 2000). No detecta muchos incendios pequeños.",
+  "What the newer VIIRS sensor counted (375 m pixels, since 2012). It sees smaller fires.":
+    "Lo que contó el sensor VIIRS, el más nuevo (píxeles de 375 m, desde 2012). Detecta incendios más pequeños.",
+  "A place where a satellite detected unusual heat, usually a fire. One fire can produce several hotspots.":
+    "Un lugar donde un satélite detectó calor inusual, casi siempre un incendio. Un mismo incendio puede producir varios puntos de calor.",
 };
